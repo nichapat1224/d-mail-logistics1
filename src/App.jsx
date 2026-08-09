@@ -1,18 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { db, auth } from './firebase';
-import { collection, addOn, getDocs, query, orderBy, serverTimestamp } from 'firebase/firestore';
-import JsBarcode from 'jsbarcode';
+import React, { useState } from 'react';
 
 export default function App() {
-  const [parcels, setParcels] = useState([]);
   const [trackingNo, setTrackingNo] = useState('');
   const [recipientName, setRecipientName] = useState('');
-
-  // ฟังก์ชันจำลองการโหลดข้อมูลและหน้าจอระบบพัสดุ
-  useEffect(() => {
-    // ตรงนี้คือส่วนแสดงผลระบบจัดการพัสดุของคุณ
-    console.log("D-Mail Logistics System Loaded");
-  }, []);
 
   return (
     <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto' }}>
@@ -49,8 +39,8 @@ export default function App() {
 
       <div style={{ marginTop: '30px' }}>
         <h3>📋 รายการพัสดุทั้งหมด</h3>
-        <p style={{ color: '#64748b' }}>ยังไม่มีรายการพัสดุในระบบ (พร้อมใช้งานกับฐานข้อมูล Firebase)</p>
+        <p style={{ color: '#64748b' }}>ระบบพร้อมใช้งานแล้ว!</p>
       </div>
     </div>
   );
-}                            
+}

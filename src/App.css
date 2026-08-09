@@ -1,184 +1,616 @@
-.counter {
-  font-size: 16px;
-  padding: 5px 10px;
-  border-radius: 5px;
-  color: var(--accent);
-  background: var(--accent-bg);
-  border: 2px solid transparent;
-  transition: border-color 0.3s;
-  margin-bottom: 24px;
+import React, { useState, useEffect } from 'react';
+import JsBarcode from 'jsbarcode';
+import { db, auth } from './firebase';
+import { 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  signOut, 
+  onAuthStateChanged 
+} from 'firebase/auth';
+import { 
+  collection, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  doc, 
+  getDoc,
+  setDoc,
+  onSnapshot, 
+  query, 
+  orderBy, 
+  serverTimestamp 
+} from 'firebase/firestore';
 
-  &:hover {
-    border-color: var(--accent-border);
-  }
-  &:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-  }
-}
+const DISCORD_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1534569324356964352/1rvOo8ssGWLqzmSTw9mtB-Zun3pyuqgnT1GkHWJaHXU4_p4pJuswsJGLimqdsKag-fMC";
 
-.hero {
-  position: relative;
+const THAI_PROVINCES = [
+  "กรุงเทพมหานคร", "กระบี่", "กาญจนบุรี", "กาฬสินธุ์", "กำแพงเพชร", "ขอนแก่น", "จันทบุรี", "ฉะเชิงเทรา", 
+  "ชลบุรี", "ชัยนาท", "ชัยภูมิ", "ชุมพร", "เชียงราย", "เชียงใหม่", "ตรัง", "ตราด", "ตาก", "นครนายก", 
+  "นครปฐม", "นครพนม", "นครราชสีมา", "นครศรีธรรมราช", "นครสวรรค์", "นนทบุรี", "นราธิวาส", "น่าน", 
+  "บึงกาฬ", "บุรีรัมย์", "ปทุมธานี", "ประจวบคีรีขันธ์", "ปราจีนบุรี", "ปัตตานี", "พระนครศรีอยุธยา", 
+  "พะเยา", "พังงา", "พัทลุง", "พิจิตร", "พิษณุโลก", "เพชรบุรี", "เพชรบูรณ์", "แพร่", "ภูเก็ต", 
+  "มหาสารคาม", "มุกดาหาร", "แม่ฮ่องสอน", "ยโสธร", "ยะลา", "ร้อยเอ็ด", "ระนอง", "ระยอง", "ราชบุรี", 
+  "ลพบุรี", "ลำปาง", "ลำพูน", "เลย", "ศรีสะเกษ", "สกลนคร", "สงขลา", "สตูล", "สมุทรปราการ", 
+  "สมุทรสงคราม", "สมุทรสาคร", "สระแก้ว", "สระบุรี", "สิงห์บุรี", "สุโขทัย", "สุพรรณบุรี", "สุราษฎร์ธานี", 
+  "สุรินทร์", "หนองคาย", "หนองบัวลำภู", "อ่างทอง", "อำนาจเจริญ", "อุดรธานี", "อุตรดิตถ์", "อุทัยธานี", "อุบลราชธานี"
+];
 
-  .base,
-  .framework,
-  .vite {
-    inset-inline: 0;
-    margin: 0 auto;
-  }
+const generateTrackingId = () => 'DM' + Math.floor(10000000 + Math.random() * 90000000) + 'TH';
 
-  .base {
-    width: 170px;
-    position: relative;
-    z-index: 0;
-  }
+export default function App() {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [userRole, setUserRole] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
-  .framework,
-  .vite {
-    position: absolute;
-  }
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [showRoleSelector, setShowRoleSelector] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [authError, setAuthError] = useState('');
 
-  .framework {
-    z-index: 1;
-    top: 34px;
-    height: 28px;
-    transform: perspective(2000px) rotateZ(300deg) rotateX(44deg) rotateY(39deg)
-      scale(1.4);
-  }
+  const [parcels, setParcels] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ทั้งหมด');
+  const [toast, setToast] = useState('');
 
-  .vite {
-    z-index: 0;
-    top: 107px;
-    height: 26px;
-    width: auto;
-    transform: perspective(2000px) rotateZ(300deg) rotateX(40deg) rotateY(39deg)
-      scale(0.8);
-  }
-}
+  const [selectedProvince, setSelectedProvince] = useState('กรุงเทพมหานคร');
+  const [addressDetail, setAddressDetail] = useState('');
+  
+  const [formData, setFormData] = useState({
+    trackingId: generateTrackingId(),
+    recipient: '',
+    phone: '',
+    status: 'รับฝากชำระแล้ว'
+  });
+  const [formLoading, setFormLoading] = useState(false);
 
-#center {
-  display: flex;
-  flex-direction: column;
-  gap: 25px;
-  place-content: center;
-  place-items: center;
-  flex-grow: 1;
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setCurrentUser(user);
+        try {
+          const userDocRef = doc(db, "users", user.uid);
+          const userSnap = await getDoc(userDocRef);
+          if (userSnap.exists() && userSnap.data().role) {
+            setUserRole(userSnap.data().role);
+            setShowRoleSelector(false);
+          } else {
+            setShowRoleSelector(true);
+          }
+        } catch (e) {
+          console.error("Error fetching user role:", e);
+        }
+      } else {
+        setCurrentUser(null);
+        setUserRole(null);
+        setShowRoleSelector(false);
+      }
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
-  @media (max-width: 1024px) {
-    padding: 32px 20px 24px;
-    gap: 18px;
-  }
-}
+  useEffect(() => {
+    if (!currentUser) return;
+    const q = query(collection(db, "parcels"), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const parcelList = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setParcels(parcelList);
+    });
+    return () => unsubscribe();
+  }, [currentUser]);
 
-#next-steps {
-  display: flex;
-  border-top: 1px solid var(--border);
-  text-align: left;
+  const showToast = (message) => {
+    setToast(message);
+    setTimeout(() => setToast(''), 3000);
+  };
 
-  & > div {
-    flex: 1 1 0;
-    padding: 32px;
-    @media (max-width: 1024px) {
-      padding: 24px 20px;
+  const handleAuthSubmit = async (e) => {
+    e.preventDefault();
+    setAuthError('');
+
+    if (isRegistering) {
+      if (password !== confirmPassword) {
+        setAuthError('รหัสผ่านทั้งสองช่องไม่ตรงกัน');
+        return;
+      }
+      if (password.length < 6) {
+        setAuthError('รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร');
+        return;
+      }
+      try {
+        await createUserWithEmailAndPassword(auth, email, password);
+      } catch (err) {
+        setAuthError(err.code === 'auth/email-already-in-use' ? 'อีเมลนี้ถูกใช้งานแล้ว' : 'เกิดข้อผิดพลาดในการลงทะเบียน');
+      }
+    } else {
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+      } catch (err) {
+        setAuthError('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+      }
     }
-  }
+  };
 
-  .icon {
-    margin-bottom: 16px;
-    width: 22px;
-    height: 22px;
-  }
+  const handleSelectRole = async (selectedRole) => {
+    if (!currentUser) return;
+    setUserRole(selectedRole);
+    setShowRoleSelector(false);
 
-  @media (max-width: 1024px) {
-    flex-direction: column;
-    text-align: center;
-  }
-}
-
-#docs {
-  border-right: 1px solid var(--border);
-
-  @media (max-width: 1024px) {
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-  }
-}
-
-#next-steps ul {
-  list-style: none;
-  padding: 0;
-  display: flex;
-  gap: 8px;
-  margin: 32px 0 0;
-
-  .logo {
-    height: 18px;
-  }
-
-  a {
-    color: var(--text-h);
-    font-size: 16px;
-    border-radius: 6px;
-    background: var(--social-bg);
-    display: flex;
-    padding: 6px 12px;
-    align-items: center;
-    gap: 8px;
-    text-decoration: none;
-    transition: box-shadow 0.3s;
-
-    &:hover {
-      box-shadow: var(--shadow);
+    try {
+      await setDoc(doc(db, "users", currentUser.uid), {
+        email: currentUser.email,
+        role: selectedRole,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      showToast(`เข้าสู่ระบบในฐานะ [${selectedRole}] เรียบร้อยแล้ว`);
+    } catch (e) {
+      console.error("Error saving role:", e);
+      showToast('ไม่สามารถบันทึกสิทธิ์ลงฐานข้อมูลได้');
     }
-    .button-icon {
-      height: 18px;
-      width: 18px;
+  };
+
+  const handleLogout = () => {
+    setUserRole(null);
+    setShowRoleSelector(false);
+    signOut(auth);
+  };
+
+  const sendDiscordNotification = async (title, parcelData, color = 3447003) => {
+    if (!DISCORD_WEBHOOK_URL) return;
+    try {
+      await fetch(DISCORD_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          embeds: [{
+            title: title,
+            color: color,
+            fields: [
+              { name: 'Tracking ID', value: `\`${parcelData.trackingId}\``, inline: true },
+              { name: 'ผู้รับ', value: parcelData.recipient, inline: true },
+              { name: 'เบอร์โทร', value: parcelData.phone || 'ไม่ระบุ', inline: true },
+              { name: 'ปลายทาง', value: parcelData.location, inline: false },
+              { name: 'สถานะปัจจุบัน', value: `**${parcelData.status}**`, inline: false },
+              { name: 'ผู้ทำรายการ', value: `${currentUser?.email} (${userRole})`, inline: false }
+            ],
+            footer: { text: 'D-MAIL LOGISTICS Notification System' },
+            timestamp: new Date().toISOString()
+          }]
+        })
+      });
+    } catch (error) {
+      console.error("Discord Notification Error:", error);
     }
-  }
+  };
 
-  @media (max-width: 1024px) {
-    margin-top: 20px;
-    flex-wrap: wrap;
-    justify-content: center;
-
-    li {
-      flex: 1 1 calc(50% - 8px);
+  const printLabel = (item) => {
+    const svgNode = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    if (typeof JsBarcode === 'function') {
+      JsBarcode(svgNode, item.trackingId, { format: "CODE128", width: 2, height: 45, displayValue: true });
     }
 
-    a {
-      width: 100%;
-      justify-content: center;
-      box-sizing: border-box;
+    const trackUrl = `${window.location.origin}/track?id=${item.trackingId}`;
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(trackUrl)}`;
+
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+
+    const pri = iframe.contentWindow;
+    pri.document.open();
+    pri.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>ใบปะหน้าพัสดุ - ${item.trackingId}</title>
+          <style>
+            body { font-family: sans-serif; padding: 15px; text-align: center; border: 2px dashed #000; margin: 10px; }
+            h2 { font-size: 20px; margin-bottom: 2px; }
+            .barcode { margin: 10px 0; display: flex; justify-content: center; }
+            .barcode svg { width: 100%; max-width: 280px; height: auto; }
+            .content-grid { display: flex; justify-content: space-between; text-align: left; margin-top: 10px; border-top: 1px solid #ccc; padding-top: 10px; font-size: 13px; line-height: 1.5; }
+            .qr-box { text-align: center; margin-left: 10px; }
+            .qr-box img { width: 85px; height: 85px; }
+            .qr-text { font-size: 9px; color: #555; margin-top: 2px; }
+          </style>
+        </head>
+        <body>
+          <h2>D-MAIL LOGISTICS</h2>
+          <p style="margin-top:0; font-size:11px; color:#555;">ใบปะหน้าพัสดุด่วนพิเศษ</p>
+          <div class="barcode">${svgNode.outerHTML}</div>
+          <div class="content-grid">
+            <div>
+              <p><strong>Tracking ID:</strong> ${item.trackingId}</p>
+              <p><strong>ผู้รับ:</strong> ${item.recipient} (${item.phone || 'ไม่ระบุเบอร์'})</p>
+              <p><strong>ปลายทาง:</strong> ${item.location}</p>
+              <p><strong>สถานะ:</strong> ${item.status}</p>
+            </div>
+            <div class="qr-box">
+              <img src="${qrCodeUrl}" alt="QR Tracking" />
+              <div class="qr-text">สแกนเช็กสถานะ</div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+    pri.document.close();
+
+    setTimeout(() => {
+      pri.focus();
+      pri.print();
+      document.body.removeChild(iframe);
+    }, 600);
+  };
+
+  const handleSaveAndPrint = async (e) => {
+    e.preventDefault();
+    if (userRole !== 'Admin') {
+      showToast('เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่บันทึกข้อมูลได้');
+      return;
     }
-  }
-}
 
-#spacer {
-  height: 88px;
-  border-top: 1px solid var(--border);
-  @media (max-width: 1024px) {
-    height: 48px;
-  }
-}
+    if (!formData.recipient || !addressDetail) {
+      showToast('กรุณากรอกข้อมูลผู้รับและรายละเอียดที่อยู่ให้ครบถ้วน');
+      return;
+    }
 
-.ticks {
-  position: relative;
-  width: 100%;
+    const fullLocation = `${addressDetail} จ.${selectedProvince}`;
+    const newParcelData = {
+      trackingId: formData.trackingId,
+      recipient: formData.recipient,
+      phone: formData.phone,
+      location: fullLocation,
+      status: formData.status,
+      createdBy: currentUser.email
+    };
 
-  &::before,
-  &::after {
-    content: '';
-    position: absolute;
-    top: -4.5px;
-    border: 5px solid transparent;
+    setFormLoading(true);
+    try {
+      await addDoc(collection(db, "parcels"), { ...newParcelData, createdAt: serverTimestamp() });
+      sendDiscordNotification("ลงทะเบียนพัสดุใหม่แล้ว", newParcelData, 3066993);
+      printLabel(newParcelData);
+      showToast('บันทึกข้อมูลสำเร็จ');
+      
+      setFormData({ trackingId: generateTrackingId(), recipient: '', phone: '', status: 'รับฝากชำระแล้ว' });
+      setAddressDetail('');
+      setSelectedProvince('กรุงเทพมหานคร');
+    } catch (error) {
+      showToast('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const handleUpdateStatus = async (item, newStatus) => {
+    if (userRole !== 'Admin') return;
+    try {
+      await updateDoc(doc(db, "parcels", item.id), { status: newStatus });
+      sendDiscordNotification("อัปเดตสถานะพัสดุ", { ...item, status: newStatus }, 3447003);
+      showToast('อัปเดตสถานะพัสดุแล้ว');
+    } catch (error) {
+      showToast('ไม่สามารถอัปเดตสถานะได้');
+    }
+  };
+
+  const handleDeleteParcel = async (id, trackingId) => {
+    if (userRole !== 'Admin') return;
+    if (window.confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบพัสดุเลข ${trackingId}?`)) {
+      try {
+        await deleteDoc(doc(db, "parcels", id));
+        showToast('ลบรายการพัสดุเรียบร้อย');
+      } catch (error) {
+        showToast('เกิดข้อผิดพลาดในการลบ');
+      }
+    }
+  };
+
+  const exportToCSV = () => {
+    if (parcels.length === 0) return;
+    let rows = [["Tracking ID", "ผู้รับ", "เบอร์โทร", "ที่อยู่ปลายทาง", "สถานะ", "ผู้ลงทะเบียน", "วันที่บันทึก"]];
+    
+    filteredParcels.forEach(p => {
+      const dateStr = p.createdAt ? new Date(p.createdAt.seconds * 1000).toLocaleString('th-TH') : '-';
+      rows.push([
+        p.trackingId,
+        p.recipient,
+        p.phone || '',
+        p.location,
+        p.status,
+        p.createdBy || '-',
+        dateStr
+      ]);
+    });
+
+    let csvContent = "\uFEFF" + rows.map(e => e.map(val => `"${val}"`).join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `D-MAIL_History_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('ส่งออกไฟล์ CSV เรียบร้อยแล้ว');
+  };
+
+  const stats = {
+    total: parcels.length,
+    pending: parcels.filter(p => p.status === 'รับฝากชำระแล้ว').length,
+    delivering: parcels.filter(p => p.status === 'กำลังจัดส่ง' || p.status === 'อยู่ระหว่างการนำจ่าย').length,
+    success: parcels.filter(p => p.status === 'จัดส่งสำเร็จ').length,
+  };
+
+  const filteredParcels = parcels.filter(p => {
+    const matchesSearch = 
+      p.trackingId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.recipient.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (p.phone && p.phone.includes(searchTerm));
+    const matchesStatus = statusFilter === 'ทั้งหมด' || p.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const styles = {
+    container: { minHeight: '100vh', backgroundColor: '#0f172a', color: '#f8fafc', fontFamily: 'sans-serif', padding: '20px' },
+    card: { backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '24px', marginBottom: '20px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' },
+    input: { width: '100%', backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '8px', padding: '10px 14px', color: '#fff', fontSize: '14px', outline: 'none', boxSizing: 'border-box', marginBottom: '12px' },
+    button: { width: '100%', backgroundColor: '#06b6d4', color: '#0f172a', fontWeight: 'bold', padding: '12px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '14px' },
+    flexBetween: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' },
+    grid4: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '20px' },
+    table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' },
+    th: { padding: '12px', borderBottom: '2px solid #334155', color: '#94a3b8', fontSize: '12px', textTransform: 'uppercase' },
+    td: { padding: '12px', borderBottom: '1px solid #334155' }
+  };
+
+  if (authLoading) {
+    return <div style={{ minHeight: '100vh', backgroundColor: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#06b6d4', fontFamily: 'monospace' }}>กำลังโหลดระบบ...</div>;
   }
 
-  &::before {
-    left: 0;
-    border-left-color: var(--border);
+  if (!currentUser) {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#0f172a', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '16px' }}>
+        <div style={{ width: '100%', maxWidth: '400px', ...styles.card }}>
+          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+            <h1 style={{ fontSize: '24px', fontWeight: '900', color: '#fff', margin: '0 0 8px 0' }}>
+              D-MAIL <span style={{ color: '#06b6d4' }}>LOGISTICS</span>
+            </h1>
+            <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>
+              {isRegistering ? 'สร้างบัญชีผู้ใช้งานใหม่' : 'เข้าสู่ระบบจัดการพัสดุ'}
+            </p>
+          </div>
+
+          {authError && (
+            <div style={{ marginBottom: '16px', padding: '10px', backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#f87171', fontSize: '12px', borderRadius: '6px', textAlign: 'center' }}>
+              {authError}
+            </div>
+          )}
+
+          <form onSubmit={handleAuthSubmit}>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '4px' }}>อีเมลผู้ใช้งาน</label>
+              <input type="email" required placeholder="example@dmail.com" value={email} onChange={(e) => setEmail(e.target.value)} style={styles.input} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '4px' }}>รหัสผ่าน</label>
+              <input type="password" required placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} style={styles.input} />
+            </div>
+            {isRegistering && (
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '4px' }}>ยืนยันรหัสผ่าน</label>
+                <input type="password" required placeholder="••••••••" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} style={styles.input} />
+              </div>
+            )}
+            <button type="submit" style={{ ...styles.button, marginTop: '8px' }}>
+              {isRegistering ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}
+            </button>
+          </form>
+
+          <div style={{ marginTop: '20px', textAlign: 'center', fontSize: '12px', color: '#94a3b8' }}>
+            {isRegistering ? (
+              <p>มีบัญชีอยู่แล้ว? <button type="button" onClick={() => { setIsRegistering(false); setAuthError(''); }} style={{ background: 'none', border: 'none', color: '#06b6d4', fontWeight: 'bold', cursor: 'pointer', padding: 0 }}>เข้าสู่ระบบ</button></p>
+            ) : (
+              <p>ยังไม่มีบัญชีผู้ใช้งาน? <button type="button" onClick={() => { setIsRegistering(true); setAuthError(''); }} style={{ background: 'none', border: 'none', color: '#06b6d4', fontWeight: 'bold', cursor: 'pointer', padding: 0 }}>สมัครสมาชิกใหม่</button></p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   }
-  &::after {
-    right: 0;
-    border-right-color: var(--border);
+
+  if (showRoleSelector || !userRole) {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+        <div style={{ width: '100%', maxWidth: '480px', textAlign: 'center', ...styles.card }}>
+          <span style={{ backgroundColor: 'rgba(6, 182, 212, 0.1)', color: '#06b6d4', fontSize: '12px', fontWeight: 'bold', padding: '4px 12px', borderRadius: '20px', border: '1px solid rgba(6, 182, 212, 0.2)' }}>สิทธิ์การใช้งาน</span>
+          <h2 style={{ fontSize: '20px', fontWeight: 'bold', margin: '16px 0 4px 0', color: '#fff' }}>เลือกประเภทการเข้าใช้งาน</h2>
+          <p style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '24px' }}>({currentUser.email})</p>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+            <button type="button" onClick={() => handleSelectRole('Admin')} style={{ backgroundColor: '#0f172a', border: '1px solid #06b6d4', borderRadius: '12px', padding: '20px', textAlign: 'left', cursor: 'pointer', color: '#fff' }}>
+              <div style={{ fontSize: '24px', marginBottom: '8px' }}>⚡</div>
+              <div style={{ fontWeight: 'bold', color: '#06b6d4', fontSize: '14px' }}>Admin</div>
+              <p style={{ fontSize: '11px', color: '#94a3b8', margin: '8px 0 0 0' }}>จัดการพัสดุ พิมพ์ใบปะหน้า</p>
+            </button>
+            <button type="button" onClick={() => handleSelectRole('User')} style={{ backgroundColor: '#0f172a', border: '1px solid #10b981', borderRadius: '12px', padding: '20px', textAlign: 'left', cursor: 'pointer', color: '#fff' }}>
+              <div style={{ fontSize: '24px', marginBottom: '8px' }}>👤</div>
+              <div style={{ fontWeight: 'bold', color: '#10b981', fontSize: '14px' }}>User</div>
+              <p style={{ fontSize: '11px', color: '#94a3b8', margin: '8px 0 0 0' }}>ค้นหาและติดตามพัสดุ</p>
+            </button>
+          </div>
+          <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '12px', cursor: 'pointer', textDecoration: 'underline' }}>ออกจากระบบ</button>
+        </div>
+      </div>
+    );
   }
+
+  return (
+    <div style={styles.container}>
+      {toast && (
+        <div style={{ position: 'fixed', top: '20px', right: '20px', backgroundColor: '#2563eb', color: '#fff', padding: '12px 20px', borderRadius: '8px', zIndex: 1000, fontSize: '14px', fontWeight: 'bold', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)' }}>
+          {toast}
+        </div>
+      )}
+
+      <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+        <div style={{ ...styles.flexBetween, marginBottom: '20px' }}>
+          <div>
+            <h1 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>D-MAIL Logistics Portal</h1>
+            <p style={{ fontSize: '12px', color: '#94a3b8', margin: '4px 0 0 0' }}>{userRole === 'Admin' ? 'ระบบผู้ดูแลระบบ (Admin Control Center)' : 'ระบบติดตามพัสดุสำหรับผู้ใช้งานทั่วไป'}</p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <div style={{ backgroundColor: '#1e293b', border: '1px solid #334155', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: userRole === 'Admin' ? '#06b6d4' : '#10b981' }}></span>
+              <span>{currentUser.email}</span>
+              <span style={{ fontSize: '10px', fontWeight: 'bold', padding: '2px 6px', borderRadius: '4px', backgroundColor: userRole === 'Admin' ? 'rgba(6,182,212,0.2)' : 'rgba(16,185,129,0.2)', color: userRole === 'Admin' ? '#06b6d4' : '#10b981' }}>{userRole}</span>
+            </div>
+            <button onClick={() => setShowRoleSelector(true)} style={{ backgroundColor: '#334155', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', cursor: 'pointer' }}>🔄 สลับ Role</button>
+            <button onClick={handleLogout} style={{ backgroundColor: 'rgba(239,68,68,0.2)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', cursor: 'pointer' }}>ออกจากระบบ</button>
+          </div>
+        </div>
+
+        {userRole === 'Admin' && (
+          <>
+            <div style={styles.grid4}>
+              <div style={styles.card}>
+                <div style={{ fontSize: '12px', color: '#94a3b8' }}>พัสดุทั้งหมดในระบบ</div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', marginTop: '4px' }}>{stats.total} <span style={{ fontSize: '12px', fontWeight: 'normal', color: '#94a3b8' }}>รายการ</span></div>
+              </div>
+              <div style={styles.card}>
+                <div style={{ fontSize: '12px', color: '#fbbf24' }}>รอการจัดส่ง</div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', marginTop: '4px', color: '#fbbf24' }}>{stats.pending} <span style={{ fontSize: '12px', fontWeight: 'normal', color: '#94a3b8' }}>รายการ</span></div>
+              </div>
+              <div style={styles.card}>
+                <div style={{ fontSize: '12px', color: '#60a5fa' }}>กำลังจัดส่ง</div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', marginTop: '4px', color: '#60a5fa' }}>{stats.delivering} <span style={{ fontSize: '12px', fontWeight: 'normal', color: '#94a3b8' }}>รายการ</span></div>
+              </div>
+              <div style={styles.card}>
+                <div style={{ fontSize: '12px', color: '#34d399' }}>จัดส่งสำเร็จ</div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', marginTop: '4px', color: '#34d399' }}>{stats.success} <span style={{ fontSize: '12px', fontWeight: 'normal', color: '#94a3b8' }}>รายการ</span></div>
+              </div>
+            </div>
+
+            <div style={styles.card}>
+              <h2 style={{ fontSize: '16px', fontWeight: 'bold', color: '#06b6d4', margin: '0 0 16px 0' }}>➕ ลงทะเบียนรับฝากพัสดุใหม่ (Admin Control)</h2>
+              <form onSubmit={handleSaveAndPrint} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '4px' }}>Tracking ID</label>
+                  <input type="text" value={formData.trackingId} readOnly style={{ ...styles.input, color: '#06b6d4', fontFamily: 'monospace', fontWeight: 'bold', cursor: 'not-allowed' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '4px' }}>ชื่อ-นามสกุล ผู้รับ</label>
+                  <input type="text" placeholder="คุณสมชาย ใจดี" value={formData.recipient} onChange={(e) => setFormData({ ...formData, recipient: e.target.value })} style={styles.input} required />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '4px' }}>เบอร์โทรศัพท์</label>
+                  <input type="tel" placeholder="0812345678" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} style={styles.input} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '4px' }}>จังหวัดปลายทาง</label>
+                  <select value={selectedProvince} onChange={(e) => setSelectedProvince(e.target.value)} style={styles.input}>
+                    {THAI_PROVINCES.map((prov) => <option key={prov} value={prov}>{prov}</option>)}
+                  </select>
+                </div>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '4px' }}>รายละเอียดที่อยู่</label>
+                  <input type="text" placeholder="บ้านเลขที่ / ถนน / ซอย / ตำบล / อำเภอ" value={addressDetail} onChange={(e) => setAddressDetail(e.target.value)} style={styles.input} required />
+                </div>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <button type="submit" disabled={formLoading} style={{ ...styles.button, backgroundColor: '#06b6d4', color: '#0f172a' }}>
+                    {formLoading ? 'กำลังบันทึก...' : 'บันทึกลงฐานข้อมูลและพิมพ์ใบปะหน้า'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </>
+        )}
+
+        <div style={styles.card}>
+          <div style={{ ...styles.flexBetween, marginBottom: '16px' }}>
+            <div>
+              <h2 style={{ fontSize: '16px', fontWeight: 'bold', margin: 0 }}>📜 ค้นหาและตรวจสอบประวัติย้อนหลัง ({filteredParcels.length})</h2>
+              <p style={{ fontSize: '12px', color: '#94a3b8', margin: '2px 0 0 0' }}>ค้นหาได้จาก Tracking, ชื่อผู้รับ, หรือเบอร์โทรศัพท์</p>
+            </div>
+            {userRole === 'Admin' && (
+              <button onClick={exportToCSV} style={{ backgroundColor: '#059669', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}>
+                📥 Export ประวัติ CSV
+              </button>
+            )}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px', marginBottom: '16px' }}>
+            <input type="text" placeholder="🔍 ค้นหาข้อมูลพัสดุ..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ ...styles.input, margin: 0 }} />
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ ...styles.input, margin: 0 }}>
+              <option value="ทั้งหมด">สถานะ: ทั้งหมด</option>
+              <option value="รับฝากชำระแล้ว">รับฝากชำระแล้ว</option>
+              <option value="กำลังจัดส่ง">กำลังจัดส่ง</option>
+              <option value="อยู่ระหว่างการนำจ่าย">อยู่ระหว่างการนำจ่าย</option>
+              <option value="จัดส่งสำเร็จ">จัดส่งสำเร็จ</option>
+            </select>
+          </div>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th style={styles.th}>Tracking ID</th>
+                  <th style={styles.th}>วันที่ / ผู้ลงทะเบียน</th>
+                  <th style={styles.th}>ผู้รับ / เบอร์โทร</th>
+                  <th style={styles.th}>ปลายทาง</th>
+                  <th style={styles.th}>สถานะ</th>
+                  {userRole === 'Admin' && <th style={{ ...styles.th, textAlign: 'center' }}>จัดการ</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredParcels.length === 0 ? (
+                  <tr>
+                    <td colSpan={userRole === 'Admin' ? "6" : "5"} style={{ ...styles.td, textAlign: 'center', color: '#64748b' }}>ไม่พบข้อมูลพัสดุ</td>
+                  </tr>
+                ) : (
+                  filteredParcels.map((item) => (
+                    <tr key={item.id}>
+                      <td style={{ ...styles.td, fontFamily: 'monospace', fontWeight: 'bold', color: '#06b6d4' }}>{item.trackingId}</td>
+                      <td style={styles.td}>
+                        <div style={{ fontSize: '12px' }}>{item.createdAt ? new Date(item.createdAt.seconds * 1000).toLocaleString('th-TH') : '-'}</div>
+                        <div style={{ fontSize: '10px', color: '#64748b' }}>{item.createdBy || '-'}</div>
+                      </td>
+                      <td style={styles.td}>
+                        <div style={{ fontWeight: '500' }}>{item.recipient}</div>
+                        <div style={{ fontSize: '11px', color: '#64748b' }}>{item.phone || '-'}</div>
+                      </td>
+                      <td style={{ ...styles.td, maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.location}</td>
+                      <td style={styles.td}>
+                        {userRole === 'Admin' ? (
+                          <select value={item.status} onChange={(e) => handleUpdateStatus(item, e.target.value)} style={{ backgroundColor: '#0f172a', border: '1px solid #475569', color: '#fff', fontSize: '12px', padding: '4px 8px', borderRadius: '4px' }}>
+                            <option value="รับฝากชำระแล้ว">รับฝากชำระแล้ว</option>
+                            <option value="กำลังจัดส่ง">กำลังจัดส่ง</option>
+                            <option value="อยู่ระหว่างการนำจ่าย">อยู่ระหว่างการนำจ่าย</option>
+                            <option value="จัดส่งสำเร็จ">จัดส่งสำเร็จ</option>
+                          </select>
+                        ) : (
+                          <span style={{ fontSize: '11px', fontWeight: 'bold', padding: '4px 8px', borderRadius: '4px', backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.2)' }}>{item.status}</span>
+                        )}
+                      </td>
+                      {userRole === 'Admin' && (
+                        <td style={{ ...styles.td, textAlign: 'center' }}>
+                          <button onClick={() => printLabel(item)} style={{ backgroundColor: 'rgba(6,182,212,0.2)', color: '#06b6d4', border: '1px solid rgba(6,182,212,0.3)', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', cursor: 'pointer', marginRight: '4px' }}>🖨️ พิมพ์</button>
+                          <button onClick={() => handleDeleteParcel(item.id, item.trackingId)} style={{ backgroundColor: 'rgba(239,68,68,0.2)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', cursor: 'pointer' }}>🗑️ ลบ</button>
+                        </td>
+                      )}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }

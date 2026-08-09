@@ -1,122 +1,56 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import React, { useState, useEffect } from 'react';
+import { db, auth } from './firebase';
+import { collection, addOn, getDocs, query, orderBy, serverTimestamp } from 'firebase/firestore';
+import JsBarcode from 'jsbarcode';
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const [parcels, setParcels] = useState([]);
+  const [trackingNo, setTrackingNo] = useState('');
+  const [recipientName, setRecipientName] = useState('');
+
+  // ฟังก์ชันจำลองการโหลดข้อมูลและหน้าจอระบบพัสดุ
+  useEffect(() => {
+    // ตรงนี้คือส่วนแสดงผลระบบจัดการพัสดุของคุณ
+    console.log("D-Mail Logistics System Loaded");
+  }, []);
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto' }}>
+      <header style={{ borderBottom: '2px solid #ccc', paddingBottom: '10px', marginBottom: '20px' }}>
+        <h1 style={{ color: '#2563eb' }}>📦 D-Mail Logistics System</h1>
+        <p>ระบบจัดการและติดตามพัสดุออนไลน์</p>
+      </header>
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+      <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+        <h3>📥 บันทึกพัสดุเข้าใหม่</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
+          <input 
+            type="text" 
+            placeholder="เลขพัสดุ / Tracking Number" 
+            value={trackingNo}
+            onChange={(e) => setTrackingNo(e.target.value)}
+            style={{ padding: '10px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+          />
+          <input 
+            type="text" 
+            placeholder="ชื่อผู้รับ / ภาควิชา" 
+            value={recipientName}
+            onChange={(e) => setRecipientName(e.target.value)}
+            style={{ padding: '10px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+          />
+          <button 
+            onClick={() => alert('บันทึกข้อมูลพัสดุเรียบร้อย!')}
+            style={{ background: '#2563eb', color: 'white', padding: '10px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+          >
+            บันทึกข้อมูล
+          </button>
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      </div>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      <div style={{ marginTop: '30px' }}>
+        <h3>📋 รายการพัสดุทั้งหมด</h3>
+        <p style={{ color: '#64748b' }}>ยังไม่มีรายการพัสดุในระบบ (พร้อมใช้งานกับฐานข้อมูล Firebase)</p>
+      </div>
+    </div>
+  );
 }
-
-export default App

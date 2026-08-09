@@ -50,6 +50,9 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [authError, setAuthError] = useState('');
+  
+  // State สำหรับเปิด/ปิดซ่อนรหัสผ่าน
+  const [showPassword, setShowPassword] = useState(false);
 
   const [parcels, setParcels] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -417,21 +420,30 @@ export default function App() {
 
             <div>
               <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '8px', fontWeight: '500' }}>รหัสผ่าน</label>
-              <input 
-                type="password" 
-                required
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: '1px solid #1e293b', backgroundColor: '#162032', color: 'white', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }}
-              />
+              <div style={{ position: 'relative' }}>
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  required
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  style={{ width: '100%', padding: '14px 45px 14px 16px', borderRadius: '12px', border: '1px solid #1e293b', backgroundColor: '#162032', color: 'white', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }}
+                />
+                <button 
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '16px', padding: '4px' }}
+                >
+                  {showPassword ? '👁️' : '👁️‍🗨️'}
+                </button>
+              </div>
             </div>
 
             {isRegistering && (
               <div>
                 <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '8px', fontWeight: '500' }}>ยืนยันรหัสผ่าน</label>
                 <input 
-                  type="password" 
+                  type={showPassword ? "text" : "password"} 
                   required
                   placeholder="••••••••"
                   value={confirmPassword}
@@ -644,7 +656,7 @@ export default function App() {
                       <td style={{ padding: '14px', textAlign: 'center' }}>
                         <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
                           <button 
-                            onClick={() => printLabel(item)}
+                            onClick={() => printLabel(item) }
                             style={{ padding: '6px 12px', backgroundColor: '#0284c7', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px' }}
                           >
                             🖨️ พิมพ์

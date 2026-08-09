@@ -11,8 +11,11 @@ export default function App() {
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
 
-  // ฟอร์มพัสดุ (รันเลขพัสดุอัตโนมัติ)
-  const [trackingNo, setTrackingNo] = useState(`TH-2026-${Math.floor(1000 + Math.random() * 9000)}`);
+  // ฟังก์ชันสุ่มเลขพัสดุอัตโนมัติ
+  const generateRandomTracking = () => `TH-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+
+  // ฟอร์มพัสดุ (รันเลขพัสดุอัตโนมัติทันที)
+  const [trackingNo, setTrackingNo] = useState(generateRandomTracking());
   const [recipient, setRecipient] = useState('');
   const [phone, setPhone] = useState('');
   const [province, setProvince] = useState('กรุงเทพมหานคร');
@@ -41,17 +44,10 @@ export default function App() {
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserRole, setNewUserRole] = useState('user');
 
-  // ฟังก์ชันสุ่มเลขพัสดุใหม่
-  const handleGenerateTracking = () => {
-    const randomNum = Math.floor(1000 + Math.random() * 9000);
-    setTrackingNo(`TH-2026-${randomNum}`);
-  };
-
   // ฟังก์ชันสมัครสมาชิกใหม่จากหน้า Login
   const handleRegister = (e) => {
     e.preventDefault();
     if (regEmail && regPassword) {
-      // เช็คว่ามีอีเมลนี้อยู่แล้วหรือยัง
       const found = users.find(u => u.email === regEmail);
       if (found) {
         alert('อีเมลนี้มีผู้ใช้งานในระบบแล้ว!');
@@ -74,7 +70,6 @@ export default function App() {
     if (found) {
       setIsLoggedIn(true);
     } else {
-      // อนุญาตให้เมลใหม่เข้าได้โดยตั้งเป็น user อัตโนมัติถ้ายังไม่ถูกบันทึก
       if (email) {
         setUsers([...users, { id: Date.now(), email: email, role: 'user' }]);
         setIsLoggedIn(true);
@@ -84,7 +79,7 @@ export default function App() {
     }
   };
 
-  // ฟังก์ชันเพิ่มพัสดุ + ส่ง Discord
+  // ฟังก์ชันเพิ่มพัสดุ + ส่ง Discord (จะทำการสุ่มเลขใหม่ให้อัตโนมัติทันทีหลังบันทึก)
   const handleAddParcel = async (e) => {
     e.preventDefault();
     if (trackingNo && recipient && phone && address) {
@@ -104,7 +99,8 @@ export default function App() {
         console.error('Discord webhook error:', err);
       }
 
-      handleGenerateTracking();
+      // สุ่มเลขพัสดุใหม่ให้อัตโนมัติทันที
+      setTrackingNo(generateRandomTracking());
       setRecipient('');
       setPhone('');
       setAddress('');
@@ -155,7 +151,6 @@ export default function App() {
           </p>
 
           {!isRegistering ? (
-            // ฟอร์มเข้าสู่ระบบ
             <form onSubmit={handleLogin}>
               <div style={{ textAlign: 'left', marginBottom: '15px' }}>
                 <label style={{ color: '#e0f2fe', display: 'block', marginBottom: '5px' }}>อีเมลผู้ใช้งาน</label>
@@ -197,7 +192,6 @@ export default function App() {
               </p>
             </form>
           ) : (
-            // ฟอร์มลงทะเบียนสมาชิกใหม่
             <form onSubmit={handleRegister}>
               <div style={{ textAlign: 'left', marginBottom: '15px' }}>
                 <label style={{ color: '#e0f2fe', display: 'block', marginBottom: '5px' }}>อีเมลสำหรับสมัครสมาชิก</label>
@@ -308,25 +302,19 @@ export default function App() {
           </div>
         )}
 
-        {/* ฟอร์มเพิ่มพัสดุเฉพาะ Admin */}
+        {/* ฟอร์มเพิ่มพัสดุเฉพาะ Admin (เลขพัสดุรันอัตโนมัติ ไม่ต้องมีปุ่มกดสุ่ม) */}
         {role === 'admin' && (
           <div style={{ backgroundColor: '#112240', padding: '25px', borderRadius: '10px', marginBottom: '30px' }}>
             <h3 style={{ margin: '0 0 15px 0', color: '#38bdf8' }}>➕ เพิ่มรายการพัสดุใหม่ & แจ้งเตือน Discord</h3>
             <form onSubmit={handleAddParcel} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              <div style={{ display: 'flex', gap: '10px' }}>
+              <div>
+                <label style={{ color: '#94a3b8', fontSize: '14px', display: 'block', marginBottom: '5px' }}>เลขพัสดุออโต้ (Auto Tracking)</label>
                 <input 
                   type="text" 
                   value={trackingNo} 
                   readOnly 
-                  style={{ flex: 1, padding: '12px', borderRadius: '6px', border: '1px solid #2d3748', backgroundColor: '#050c20', color: '#38bdf8', fontWeight: 'bold' }}
+                  style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '1px solid #2d3748', backgroundColor: '#050c20', color: '#38bdf8', fontWeight: 'bold', boxSizing: 'border-box' }}
                 />
-                <button 
-                  type="button" 
-                  onClick={handleGenerateTracking}
-                  style={{ backgroundColor: '#0ea5e9', color: '#081028', border: 'none', padding: '0 20px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
-                >
-                  สุ่มเลขใหม่
-                </button>
               </div>
 
               <div style={{ display: 'flex', gap: '10px' }}>

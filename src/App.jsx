@@ -14,7 +14,7 @@ export default function App() {
   // ฟังก์ชันสุ่มเลขพัสดุอัตโนมัติ
   const generateRandomTracking = () => `TH-2026-${Math.floor(1000 + Math.random() * 9000)}`;
 
-  // ฟอร์มพัสดุ (รันเลขพัสดุอัตโนมัติทันที)
+  // ฟอร์มพัสดุ (รันเลขพัสดุอัตโนมัติ)
   const [trackingNo, setTrackingNo] = useState(generateRandomTracking());
   const [recipient, setRecipient] = useState('');
   const [phone, setPhone] = useState('');
@@ -29,12 +29,13 @@ export default function App() {
     "กรุงเทพมหานคร", "กระบี่", "กาญจนบุรี", "กาฬสินธุ์", "กำแพงเพชร", "ขอนแก่น", "จันทบุรี", "ฉะเชิงเทรา", "ชลบุรี", "ชัยนาท", "ชัยภูมิ", "ชุมพร", "ตรัง", "ตราด", "ตาก", "นครนายก", "นครปฐม", "นครพนม", "นครราชสีมา", "นครศรีธรรมราช", "นครสวรรค์", "นนทบุรี", "นราธิวาส", "น่าน", "บึงกาฬ", "บุรีรัมย์", "ปทุมธานี", "ประจวบคีรีขันธ์", "ปราจีนบุรี", "ปัตตานี", "พระนครศรีอยุธยา", "พะเยา", "พังงา", "พัทลุง", "พิจิตร", "พิษณุโลก", "ภูเก็ต", "มหาสารคาม", "มุกดาหาร", "ยะลา", "ยโสธร", "ร้อยเอ็ด", "ระนอง", "ระยอง", "ราชบุรี", "ลพบุรี", "ลำปาง", "ลำพูน", "เลย", "ศรีสะเกษ", "สกลนคร", "สงขลา", "สตูล", "สมุทรปราการ", "สมุทรสงคราม", "สมุทรสาคร", "สระแก้ว", "สระบุรี", "สิงห์บุรี", "สุโขทัย", "สุพรรณบุรี", "สุราษฎร์ธานี", "สุรินทร์", "หนองคาย", "หนองบัวลำภู", "อ่างทอง", "อำนาจเจริญ", "อุดรธานี", "อุตรดิตถ์", "อุทัยธานี", "อุบลราชธานี", "เชียงราย", "เชียงใหม่", "เพชรบุรี", "เพชรบูรณ์", "เลย", "แพร่", "แม่ฮ่องสอน"
   ];
 
-  // รายการพัสดุ
-  const [parcels, setParcels] = useState([
-    { id: 'TH-2026-001', recipient: 'คุณหมิว', phone: '0812345678', province: 'สมุทรสงคราม', address: '123 ถ.แม่กลอง', status: 'กำลังจัดส่ง' }
-  ]);
+  // รายการพัสดุเริ่มต้นเป็นค่าว่าง
+  const [parcels, setParcels] = useState([]);
 
-  // รายชื่อผู้ใช้งานในระบบ (เพิ่ม/ลบได้)
+  // ประวัติการทำรายการย้อนหลัง (History Log)
+  const [historyLogs, setHistoryLogs] = useState([]);
+
+  // รายชื่อผู้ใช้งานในระบบ
   const [users, setUsers] = useState([
     { id: 1, email: 'admin@gmail.com', role: 'admin' },
     { id: 2, email: 'user1@gmail.com', role: 'user' }
@@ -79,12 +80,18 @@ export default function App() {
     }
   };
 
-  // ฟังก์ชันเพิ่มพัสดุ + ส่ง Discord (จะทำการสุ่มเลขใหม่ให้อัตโนมัติทันทีหลังบันทึก)
+  // ฟังก์ชันเพิ่มพัสดุ + ส่ง Discord + บันทึก Log ย้อนหลัง
   const handleAddParcel = async (e) => {
     e.preventDefault();
     if (trackingNo && recipient && phone && address) {
       const newParcel = { id: trackingNo, recipient, phone, province, address, status: 'รอดำเนินการ' };
       setParcels([...parcels, newParcel]);
+
+      const timeNow = new Date().toLocaleTimeString('th-TH');
+      setHistoryLogs([
+        { id: Date.now(), action: `เพิ่มพัสดุใหม่ (${trackingNo}) ผู้รับ: ${recipient}`, time: timeNow },
+        ...historyLogs
+      ]);
 
       const webhookUrl = 'https://discordapp.com/api/webhooks/1534569324356964352/1rvOo8ssGWLqzmSTw9mtB-Zun3pyuqgnT1GkHWJaHXU4_p4pJuswsJGLimqdsKag-fMC';
       try {
@@ -99,7 +106,6 @@ export default function App() {
         console.error('Discord webhook error:', err);
       }
 
-      // สุ่มเลขพัสดุใหม่ให้อัตโนมัติทันที
       setTrackingNo(generateRandomTracking());
       setRecipient('');
       setPhone('');
@@ -113,8 +119,15 @@ export default function App() {
   // ฟังก์ชันเปลี่ยนสถานะพัสดุ
   const handleStatusChange = (index, newStatus) => {
     const updated = [...parcels];
-    updated[index].status = newStatus;
+    const target = updated[index];
+    target.status = newStatus;
     setParcels(updated);
+
+    const timeNow = new Date().toLocaleTimeString('th-TH');
+    setHistoryLogs([
+      { id: Date.now(), action: `เปลี่ยนสถานะพัสดุ ${target.id} เป็น "${newStatus}"`, time: timeNow },
+      ...historyLogs
+    ]);
   };
 
   // ฟังก์ชันเพิ่ม User จากหน้า Admin
@@ -178,7 +191,7 @@ export default function App() {
                 type="submit"
                 style={{ width: '100%', padding: '14px', borderRadius: '6px', border: 'none', backgroundColor: '#0ea5e9', color: '#081028', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '15px' }}
               >
-                เข้าสู่ระบบ
+                🔐 เข้าสู่ระบบ
               </button>
 
               <p style={{ color: '#94a3b8', fontSize: '14px', margin: '0' }}>
@@ -219,7 +232,7 @@ export default function App() {
                 type="submit"
                 style={{ width: '100%', padding: '14px', borderRadius: '6px', border: 'none', backgroundColor: '#10b981', color: 'white', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '15px' }}
               >
-                ยืนยันลงทะเบียน
+                ✨ ยืนยันลงทะเบียน
               </button>
 
               <p style={{ color: '#94a3b8', fontSize: '14px', margin: '0' }}>
@@ -276,7 +289,7 @@ export default function App() {
             onClick={() => { setRole(''); setIsLoggedIn(false); }}
             style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
           >
-            ออกจากระบบ
+            🚪 ออกจากระบบ
           </button>
         </header>
 
@@ -302,10 +315,10 @@ export default function App() {
           </div>
         )}
 
-        {/* ฟอร์มเพิ่มพัสดุเฉพาะ Admin (เลขพัสดุรันอัตโนมัติ ไม่ต้องมีปุ่มกดสุ่ม) */}
+        {/* ฟอร์มเพิ่มพัสดุเฉพาะ Admin */}
         {role === 'admin' && (
           <div style={{ backgroundColor: '#112240', padding: '25px', borderRadius: '10px', marginBottom: '30px' }}>
-            <h3 style={{ margin: '0 0 15px 0', color: '#38bdf8' }}>➕ เพิ่มรายการพัสดุใหม่ & แจ้งเตือน Discord</h3>
+            <h3 style={{ margin: '0 0 15px 0', color: '#38bdf8' }}>📦 เพิ่มรายการพัสดุใหม่ & แจ้งเตือน Discord</h3>
             <form onSubmit={handleAddParcel} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div>
                 <label style={{ color: '#94a3b8', fontSize: '14px', display: 'block', marginBottom: '5px' }}>เลขพัสดุออโต้ (Auto Tracking)</label>
@@ -357,7 +370,7 @@ export default function App() {
                 type="submit"
                 style={{ backgroundColor: '#10b981', color: 'white', border: 'none', padding: '12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
               >
-                บันทึกและส่งแจ้งเตือน Discord
+                💾 บันทึกและส่งแจ้งเตือน Discord
               </button>
             </form>
           </div>
@@ -366,7 +379,7 @@ export default function App() {
         {/* --- ส่วนจัดการผู้ใช้งาน (เพิ่ม/ลบ User) เฉพาะ Admin --- */}
         {role === 'admin' && (
           <div style={{ backgroundColor: '#112240', padding: '25px', borderRadius: '10px', marginBottom: '30px' }}>
-            <h3 style={{ margin: '0 0 15px 0', color: '#38bdf8' }}>👥 จัดการบัญชีผู้ใช้งานในระบบ (Add/Delete Users)</h3>
+            <h3 style={{ margin: '0 0 15px 0', color: '#38bdf8' }}>👥 จัดการบัญชีผู้ใช้งานในระบบ</h3>
             <form onSubmit={handleAddUser} style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
               <input 
                 type="email" 
@@ -387,7 +400,7 @@ export default function App() {
                 type="submit"
                 style={{ backgroundColor: '#6366f1', color: 'white', border: 'none', padding: '0 20px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
               >
-                เพิ่มยูสเซอร์
+                ➕
               </button>
             </form>
 
@@ -411,9 +424,10 @@ export default function App() {
                     <td style={{ padding: '10px' }}>
                       <button 
                         onClick={() => handleDeleteUser(u.id)}
-                        style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '4px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+                        style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '14px' }}
+                        title="ลบยูสเซอร์"
                       >
-                        ลบยูส
+                        🗑️
                       </button>
                     </td>
                   </tr>
@@ -424,55 +438,77 @@ export default function App() {
         )}
 
         {/* ตารางรายการพัสดุ */}
-        <div style={{ backgroundColor: '#112240', padding: '25px', borderRadius: '10px' }}>
+        <div style={{ backgroundColor: '#112240', padding: '25px', borderRadius: '10px', marginBottom: '30px' }}>
           <h3 style={{ margin: '0 0 20px 0', color: '#e2e8f0' }}>📋 รายการพัสดุทั้งหมดในระบบ</h3>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ borderBottom: '2px solid #2d3748', color: '#94a3b8', fontSize: '14px' }}>
-                <th style={{ padding: '10px' }}>เลขพัสดุ</th>
-                <th style={{ padding: '10px' }}>ผู้รับ</th>
-                <th style={{ padding: '10px' }}>เบอร์โทร</th>
-                <th style={{ padding: '10px' }}>จังหวัด</th>
-                <th style={{ padding: '10px' }}>สถานะพัสดุ</th>
-                <th style={{ padding: '10px' }}>จัดการ</th>
-              </tr>
-            </thead>
-            <tbody>
-              {parcels.map((item, index) => (
-                <tr key={index} style={{ borderBottom: '1px solid #1e293b', fontSize: '14px' }}>
-                  <td style={{ padding: '12px', color: '#38bdf8', fontWeight: 'bold' }}>{item.id}</td>
-                  <td style={{ padding: '12px' }}>{item.recipient}</td>
-                  <td style={{ padding: '12px' }}>{item.phone}</td>
-                  <td style={{ padding: '12px' }}>{item.province}</td>
-                  <td style={{ padding: '12px' }}>
-                    {role === 'admin' ? (
-                      <select 
-                        value={item.status} 
-                        onChange={(e) => handleStatusChange(index, e.target.value)}
-                        style={{ backgroundColor: '#050c20', color: '#38bdf8', padding: '4px 8px', borderRadius: '4px', border: '1px solid #2d3748' }}
-                      >
-                        <option value="รอดำเนินการ">รอดำเนินการ</option>
-                        <option value="กำลังจัดส่ง">กำลังจัดส่ง</option>
-                        <option value="จัดส่งสำเร็จ">จัดส่งสำเร็จ</option>
-                      </select>
-                    ) : (
-                      <span style={{ backgroundColor: '#065f46', color: '#34d399', padding: '4px 8px', borderRadius: '4px', fontSize: '12px' }}>
-                        {item.status}
-                      </span>
-                    )}
-                  </td>
-                  <td style={{ padding: '12px' }}>
-                    <button 
-                      onClick={() => setSelectedParcel(item)}
-                      style={{ backgroundColor: '#f59e0b', color: '#081028', border: 'none', padding: '6px 12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' }}
-                    >
-                      🖨️ พิมพ์ใบปะหน้า
-                    </button>
-                  </td>
+          {parcels.length === 0 ? (
+            <p style={{ color: '#94a3b8', textAlign: 'center', padding: '20px' }}>ยังไม่มีรายการพัสดุในระบบ ลองเพิ่มพัสดุด้านบนได้เลยครับ</p>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid #2d3748', color: '#94a3b8', fontSize: '14px' }}>
+                  <th style={{ padding: '10px' }}>เลขพัสดุ</th>
+                  <th style={{ padding: '10px' }}>ผู้รับ</th>
+                  <th style={{ padding: '10px' }}>เบอร์โทร</th>
+                  <th style={{ padding: '10px' }}>จังหวัด</th>
+                  <th style={{ padding: '10px' }}>สถานะพัสดุ</th>
+                  <th style={{ padding: '10px' }}>จัดการ</th>
                 </tr>
+              </thead>
+              <tbody>
+                {parcels.map((item, index) => (
+                  <tr key={index} style={{ borderBottom: '1px solid #1e293b', fontSize: '14px' }}>
+                    <td style={{ padding: '12px', color: '#38bdf8', fontWeight: 'bold' }}>{item.id}</td>
+                    <td style={{ padding: '12px' }}>{item.recipient}</td>
+                    <td style={{ padding: '12px' }}>{item.phone}</td>
+                    <td style={{ padding: '12px' }}>{item.province}</td>
+                    <td style={{ padding: '12px' }}>
+                      {role === 'admin' ? (
+                        <select 
+                          value={item.status} 
+                          onChange={(e) => handleStatusChange(index, e.target.value)}
+                          style={{ backgroundColor: '#050c20', color: '#38bdf8', padding: '4px 8px', borderRadius: '4px', border: '1px solid #2d3748' }}
+                        >
+                          <option value="รอดำเนินการ">รอดำเนินการ</option>
+                          <option value="กำลังจัดส่ง">กำลังจัดส่ง</option>
+                          <option value="จัดส่งสำเร็จ">จัดส่งสำเร็จ</option>
+                        </select>
+                      ) : (
+                        <span style={{ backgroundColor: '#065f46', color: '#34d399', padding: '4px 8px', borderRadius: '4px', fontSize: '12px' }}>
+                          {item.status}
+                        </span>
+                      )}
+                    </td>
+                    <td style={{ padding: '12px' }}>
+                      <button 
+                        onClick={() => setSelectedParcel(item)}
+                        style={{ backgroundColor: '#f59e0b', color: '#081028', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '16px' }}
+                        title="พิมพ์ใบปะหน้า"
+                      >
+                        🖨️
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* --- ส่วนประวัติการทำรายการย้อนหลัง (History Log) --- */}
+        <div style={{ backgroundColor: '#112240', padding: '25px', borderRadius: '10px' }}>
+          <h3 style={{ margin: '0 0 15px 0', color: '#38bdf8' }}>📜 ประวัติการทำรายการย้อนหลัง (Activity History Log)</h3>
+          {historyLogs.length === 0 ? (
+            <p style={{ color: '#94a3b8', margin: 0, fontSize: '14px' }}>ยังไม่มีประวัติการทำรายการในเซสชันนี้</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '200px', overflowY: 'auto' }}>
+              {historyLogs.map((log) => (
+                <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', backgroundColor: '#050c20', padding: '10px 15px', borderRadius: '6px', border: '1px solid #1e293b', fontSize: '14px' }}>
+                  <span style={{ color: '#e2e8f0' }}>⚡ {log.action}</span>
+                  <span style={{ color: '#94a3b8', fontSize: '12px' }}>{log.time}</span>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          )}
         </div>
       </div>
 
@@ -511,7 +547,7 @@ export default function App() {
                 onClick={() => setSelectedParcel(null)}
                 style={{ flex: 1, backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
               >
-                ปิดหน้าต่าง
+                ❌ ปิดหน้าต่าง
               </button>
             </div>
           </div>

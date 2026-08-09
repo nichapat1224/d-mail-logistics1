@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import JsBarcode from 'jsbarcode';
-import { db } from './firebase';
+import { db, auth } from './firebase';
 import { 
-  getAuth, 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signOut, 
@@ -39,7 +38,6 @@ const THAI_PROVINCES = [
 const generateTrackingId = () => 'DM' + Math.floor(10000000 + Math.random() * 90000000) + 'TH';
 
 export default function App() {
-  const auth = getAuth();
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState(null); 
   const [authLoading, setAuthLoading] = useState(true);
@@ -50,8 +48,6 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [authError, setAuthError] = useState('');
-  
-  // State สำหรับเปิด/ปิดซ่อนรหัสผ่าน
   const [showPassword, setShowPassword] = useState(false);
 
   const [parcels, setParcels] = useState([]);
@@ -94,7 +90,7 @@ export default function App() {
       setAuthLoading(false);
     });
     return () => unsubscribe();
-  }, [auth]);
+  }, []);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -130,12 +126,20 @@ export default function App() {
       try {
         await createUserWithEmailAndPassword(auth, email, password);
       } catch (err) {
-        setAuthError(err.code === 'auth/email-already-in-use' ? 'อีเมลนี้ถูกใช้งานแล้ว' : 'เกิดข้อผิดพลาดในการลงทะเบียน');
+        console.error("Register Error code:", err.code, err.message);
+        if (err.code === 'auth/email-already-in-use') {
+          setAuthError('อีเมลนี้ถูกใช้งานแล้ว');
+        } else if (err.code === 'auth/invalid-email') {
+          setAuthError('รูปแบบอีเมลไม่ถูกต้อง');
+        } else {
+          setAuthError('เกิดข้อผิดพลาดในการลงทะเบียน: ' + err.message);
+        }
       }
     } else {
       try {
         await signInWithEmailAndPassword(auth, email, password);
       } catch (err) {
+        console.error("Login Error code:", err.code, err.message);
         setAuthError('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
       }
     }
@@ -384,13 +388,11 @@ export default function App() {
       <div style={{ minHeight: '100vh', backgroundColor: '#070b14', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif', margin: 0, padding: '20px' }}>
         <div style={{ backgroundColor: '#101728', padding: '45px 40px', borderRadius: '24px', boxShadow: '0 30px 60px -15px rgba(0, 0, 0, 0.9)', width: '100%', maxWidth: '460px', border: '1px solid #1e293b', textAlign: 'center' }}>
           
-          {/* แถบสถานะด้านบน */}
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', backgroundColor: '#162032', padding: '6px 16px', borderRadius: '20px', marginBottom: '24px', border: '1px solid #1e293b' }}>
             <span style={{ width: '8px', height: '8px', backgroundColor: '#22c55e', borderRadius: '50%', boxShadow: '0 0 8px #22c55e' }}></span>
             <span style={{ color: '#cbd5e1', fontSize: '12px', fontWeight: '500' }}>ระบบจัดการและติดตามพัสดุ</span>
           </div>
 
-          {/* หัวข้อ D-MAIL LOGISTICS */}
           <div style={{ marginBottom: '30px' }}>
             <h1 style={{ fontSize: '28px', fontWeight: '800', margin: '0 0 8px 0', letterSpacing: '0.5px' }}>
               <span style={{ color: '#ffffff' }}>D-MAIL </span>

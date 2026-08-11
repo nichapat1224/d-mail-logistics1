@@ -85,12 +85,17 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setCurrentUser(user);
-        const userSnap = await getDoc(doc(db, "users", user.uid));
-        if (userSnap.exists() && userSnap.data().role) { 
-          setUserRole(userSnap.data().role); 
-          setShowRoleSelector(false); 
-        } else { 
-          setShowRoleSelector(true); 
+        try {
+          const userSnap = await getDoc(doc(db, "users", user.uid));
+          if (userSnap.exists() && userSnap.data().role) { 
+            setUserRole(userSnap.data().role); 
+            setShowRoleSelector(false); 
+          } else { 
+            setShowRoleSelector(true); 
+          }
+        } catch (err) {
+          console.error("Error fetching user role:", err);
+          setShowRoleSelector(true);
         }
       } else { 
         setCurrentUser(null); 
@@ -111,6 +116,8 @@ export default function App() {
         ...docSnap.data(), 
         parsedDate: docSnap.data().createdAt?.toDate() || new Date() 
       })));
+    }, (error) => {
+      console.error("Firestore snapshot error:", error);
     });
   }, [currentUser]);
 
@@ -148,9 +155,15 @@ export default function App() {
 
   const printLabel = (item) => {
     const printWindow = window.open('', '_blank', 'width=500,height=600');
+    if (!printWindow) return;
+
     const svgNode = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     if (typeof JsBarcode === 'function') {
-      JsBarcode(svgNode, item.trackingId, { format: "CODE128", width: 2, height: 45, displayValue: true });
+      try {
+        JsBarcode(svgNode, item.trackingId, { format: "CODE128", width: 2, height: 45, displayValue: true });
+      } catch (e) {
+        console.error("Barcode generation error:", e);
+      }
     }
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(item.trackingId)}`;
 
@@ -176,7 +189,7 @@ export default function App() {
             <p><strong>ปลายทาง:</strong> ${item.location}</p>
             <p><strong>สถานะ:</strong> ${item.status}</p>
             <div style="text-align:center; margin-top:10px;">
-              <img src="${qrCodeUrl}" width="80" />
+              <img src="${qrCodeUrl}" width="80" alt="QR Code" />
             </div>
           </div>
           <button onclick="window.print()">🖨️ สั่งพิมพ์ใบนี้</button>
@@ -203,7 +216,7 @@ export default function App() {
     setFormLoading(true);
     try {
       const docRef = await addDoc(collection(db, "parcels"), newParcelData);
-      const dataForPrint = { ...newParcelData, id: docRef.id };
+      const dataForPrint = { ...newParcelData, id: docRef.id, parsedDate: new Date() };
       
       if (DISCORD_WEBHOOK_URL) {
         fetch(DISCORD_WEBHOOK_URL, {
@@ -220,6 +233,7 @@ export default function App() {
       setFormData({ trackingId: generateTrackingId(), recipient: '', phone: '', status: 'รับฝากชำระแล้ว' });
       setAddressDetail('');
     } catch (err) {
+      console.error("Save parcel error:", err);
       showToast('เกิดข้อผิดพลาดในการบันทึก');
     }
     setFormLoading(false);
@@ -258,7 +272,6 @@ export default function App() {
     return <div style={{ background: '#070b14', color: '#fff', height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '18px' }}>กำลังโหลดระบบ...</div>;
   }
 
-  // หน้า Login / Register (ปรับดีไซน์ให้ตรงกับรูปที่สองเป๊ะๆ)
   if (!currentUser) {
     return (
       <div style={{ minHeight: '100vh', background: '#070b14', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif', color: '#fff' }}>
@@ -271,7 +284,6 @@ export default function App() {
           border: '1px solid #1e293b',
           textAlign: 'center'
         }}>
-          {/* Badge ด้านบน */}
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: '#0284c720', border: '1px solid #0284c750', padding: '4px 12px', borderRadius: '20px', marginBottom: '20px' }}>
             <span style={{ width: '8px', height: '8px', background: '#38bdf8', borderRadius: '50%', display: 'inline-block' }}></span>
             <span style={{ fontSize: '12px', color: '#38bdf8' }}>ระบบจัดการและติดตามพัสดุ</span>
@@ -336,7 +348,6 @@ export default function App() {
     );
   }
 
-  // หน้าเลือกสิทธิ์ Role Selector
   if (showRoleSelector) {
     return (
       <div style={{ minHeight: '100vh', background: '#070b14', color: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif' }}>
@@ -363,7 +374,6 @@ export default function App() {
     );
   }
 
-  // หน้า Dashboard หลัก
   return (
     <div style={{ minHeight: '100vh', background: '#070b14', color: '#f8fafc', padding: '20px', fontFamily: 'sans-serif' }}>
       {toast && (
@@ -372,7 +382,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Header */}
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #1e293b', paddingBottom: '15px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <h1 style={{ margin: 0, fontSize: '22px' }}>D-MAIL LOGISTICS</h1>
@@ -388,7 +397,6 @@ export default function App() {
         </button>
       </header>
 
-      {/* สถิติภาพรวม */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '15px', marginBottom: '25px' }}>
         <div style={{ background: '#101728', padding: '20px', borderRadius: '10px', border: '1px solid #1e293b' }}>
           <div style={{ color: '#94a3b8', fontSize: '14px' }}>พัสดุทั้งหมดในระบบ</div>
@@ -408,7 +416,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* ฟอร์มสร้างรายการพัสดุใหม่ (เฉพาะ Admin) */}
       {userRole === 'Admin' && (
         <div style={{ background: '#101728', padding: '20px', borderRadius: '10px', border: '1px solid #1e293b', marginBottom: '25px' }}>
           <h3 style={{ margin: '0 0 15px 0' }}>📝 สร้างรายการพัสดุใหม่ & พิมพ์ใบปะหน้า</h3>
@@ -478,7 +485,6 @@ export default function App() {
         </div>
       )}
 
-      {/* ค้นหาและตัวกรอง */}
       <div style={{ background: '#101728', padding: '15px', borderRadius: '10px', border: '1px solid #1e293b', marginBottom: '20px', display: 'flex', flexWrap: 'wrap', gap: '15px', alignItems: 'center' }}>
         <input 
           type="text" 
@@ -507,7 +513,6 @@ export default function App() {
         </select>
       </div>
 
-      {/* ตารางแสดงรายการพัสดุ */}
       <div style={{ background: '#101728', borderRadius: '10px', border: '1px solid #1e293b', overflow: 'hidden' }}>
         <div style={{ padding: '15px', borderBottom: '1px solid #1e293b', fontWeight: 'bold' }}>
           📋 รายการพัสดุทั้งหมดในระบบ ({filteredParcels.length})

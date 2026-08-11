@@ -73,7 +73,6 @@ export default function App() {
   const [selectedProvince, setSelectedProvince] = useState('กรุงเทพมหานคร');
   const [addressDetail, setAddressDetail] = useState('');
   
-  // State สำหรับจัดการ Modal แสดง QR Code ฝั่ง User
   const [qrModalItem, setQrModalItem] = useState(null);
 
   const [formData, setFormData] = useState({ 
@@ -223,7 +222,6 @@ export default function App() {
 
       printLabel(dataForPrint);
       showToast('บันทึกและสร้างใบปะหน้าสำเร็จ!');
-      // สุ่ม Tracking ID ใหม่ให้อัตโนมัติสำหรับรายการถัดไปทันที
       setFormData({ trackingId: generateTrackingId(), recipient: '', phone: '', status: 'รับฝากชำระแล้ว' });
       setAddressDetail('');
     } catch (err) {
@@ -367,9 +365,6 @@ export default function App() {
     );
   }
 
-  // -------------------------------------------------------------
-  // หน้าจอสำหรับ User (เปลี่ยนปุ่มพิมพ์ใบปะหน้า เป็นปุ่มสแกน QR Code พร้อม Modal)
-  // -------------------------------------------------------------
   if (userRole === 'User') {
     const activeQrUrl = qrModalItem ? `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`Tracking: ${qrModalItem.trackingId} | ผู้รับ: ${qrModalItem.recipient} | ปลายทาง: ${qrModalItem.location} | สถานะ: ${qrModalItem.status}`)}` : '';
 
@@ -454,7 +449,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Modal สำหรับแสดง QR Code แทนการพิมพ์ใบปะหน้า */}
         {qrModalItem && (
           <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 }}>
             <div style={{ background: '#101728', padding: '25px', borderRadius: '12px', width: '320px', border: '1px solid #334155', textAlign: 'center' }}>
@@ -481,9 +475,6 @@ export default function App() {
     );
   }
 
-  // -------------------------------------------------------------
-  // หน้าจอสำหรับ Admin (ช่อง Tracking ID รันออโต้)
-  // -------------------------------------------------------------
   return (
     <div style={{ minHeight: '100vh', background: '#070b14', color: '#f8fafc', padding: '20px', fontFamily: 'sans-serif' }}>
       {toast && (

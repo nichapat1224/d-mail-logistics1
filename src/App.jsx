@@ -88,10 +88,12 @@ export default function App() {
       if (user) {
         setCurrentUser(user);
         const userSnap = await getDoc(doc(db, "users", user.uid));
+        // เช็คว่ามี Role บันทึกไว้แล้วหรือยัง ถ้ามีให้ล็อกค่าไว้เลยไม่ให้เลือกใหม่
         if (userSnap.exists() && userSnap.data().role) { 
           setUserRole(userSnap.data().role); 
           setShowRoleSelector(false); 
         } else { 
+          setUserRole(null);
           setShowRoleSelector(true); 
         }
       } else { 
@@ -136,6 +138,7 @@ export default function App() {
     }
   };
 
+  // เมื่อเลือกสิทธิ์แล้ว จะบันทึกลงฐานข้อมูลและล็อกสถานะทันที ห้ามย้อนกลับมาเปลี่ยนเองเว้นแต่สมัครไอดีใหม่หรือเคลียร์ DB
   const selectRole = async (role) => {
     if (!currentUser) return;
     try {
@@ -344,9 +347,9 @@ export default function App() {
       <div style={{ minHeight: '100vh', background: '#070b14', color: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif' }}>
         <div style={{ background: '#101728', padding: '30px', borderRadius: '12px', width: '400px', textAlign: 'center', border: '1px solid #334155' }}>
           <h2 style={{ color: '#ffffff' }}>เลือกบทบาทการใช้งานของคุณ</h2>
-          <p style={{ color: '#cbd5e1', fontSize: '14px', marginBottom: '20px' }}>กรุณาเลือกสิทธิ์เพื่อเข้าสู่ระบบพัสดุ</p>
+          <p style={{ color: '#cbd5e1', fontSize: '14px', marginBottom: '10px' }}>เลือกแล้วจะไม่สามารถเปลี่ยนสิทธิ์เองได้ภายหลัง</p>
           {authError && <div style={{ background: '#ef4444', padding: '10px', borderRadius: '6px', marginBottom: '15px', fontSize: '14px' }}>{authError}</div>}
-          <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', gap: '15px', justifyContent: 'center', marginTop: '20px' }}>
             <button 
               onClick={() => selectRole('Admin')} 
               style={{ flex: 1, padding: '15px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
@@ -644,7 +647,7 @@ export default function App() {
                     <td style={{ padding: '12px' }}>
                       <select 
                         value={item.status} 
-                        onChange={(e) => updateStatus(item.id, e.target.value)} 
+                        onChange={(e) => updateStatus(item.id, e.target.value)}
                         style={{ padding: '6px', background: '#070b14', border: '1px solid #475569', color: '#fde047', borderRadius: '4px', fontWeight: '600' }}
                       >
                         <option value="รับฝากชำระแล้ว">รับฝากชำระแล้ว</option>
@@ -652,18 +655,20 @@ export default function App() {
                         <option value="จัดส่งสำเร็จ">จัดส่งสำเร็จ</option>
                       </select>
                     </td>
-                    <td style={{ padding: '12px', textAlign: 'center' }}>
+                    <td style={{ padding: '12px', textAlign: 'center', display: 'flex', gap: '8px', justifyContent: 'center' }}>
                       <button 
-                        onClick={() => printLabel(item)} 
-                        style={{ padding: '6px 12px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', marginRight: '6px', fontWeight: '600' }}
+                        onClick={() => printLabel(item)}
+                        style={{ padding: '6px 10px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '600' }}
+                        title="พิมพ์ใบปะหน้า"
                       >
-                        🖨️ พิมพ์ใบปะหน้า
+                        🖨️
                       </button>
                       <button 
-                        onClick={() => deleteParcel(item.id)} 
-                        style={{ padding: '6px 12px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '600' }}
+                        onClick={() => deleteParcel(item.id)}
+                        style={{ padding: '6px 10px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '600' }}
+                        title="ลบรายการ"
                       >
-                        🗑️ ลบ
+                        🗑️
                       </button>
                     </td>
                   </tr>

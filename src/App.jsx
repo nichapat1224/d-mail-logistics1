@@ -85,17 +85,12 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setCurrentUser(user);
-        try {
-          const userSnap = await getDoc(doc(db, "users", user.uid));
-          if (userSnap.exists() && userSnap.data().role) { 
-            setUserRole(userSnap.data().role); 
-            setShowRoleSelector(false); 
-          } else { 
-            setShowRoleSelector(true); 
-          }
-        } catch (err) {
-          console.error("Error fetching user role:", err);
-          setShowRoleSelector(true);
+        const userSnap = await getDoc(doc(db, "users", user.uid));
+        if (userSnap.exists() && userSnap.data().role) { 
+          setUserRole(userSnap.data().role); 
+          setShowRoleSelector(false); 
+        } else { 
+          setShowRoleSelector(true); 
         }
       } else { 
         setCurrentUser(null); 
@@ -116,8 +111,6 @@ export default function App() {
         ...docSnap.data(), 
         parsedDate: docSnap.data().createdAt?.toDate() || new Date() 
       })));
-    }, (error) => {
-      console.error("Firestore snapshot error:", error);
     });
   }, [currentUser]);
 
@@ -155,15 +148,9 @@ export default function App() {
 
   const printLabel = (item) => {
     const printWindow = window.open('', '_blank', 'width=500,height=600');
-    if (!printWindow) return;
-
     const svgNode = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     if (typeof JsBarcode === 'function') {
-      try {
-        JsBarcode(svgNode, item.trackingId, { format: "CODE128", width: 2, height: 45, displayValue: true });
-      } catch (e) {
-        console.error("Barcode generation error:", e);
-      }
+      JsBarcode(svgNode, item.trackingId, { format: "CODE128", width: 2, height: 45, displayValue: true });
     }
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(item.trackingId)}`;
 
@@ -189,7 +176,7 @@ export default function App() {
             <p><strong>ปลายทาง:</strong> ${item.location}</p>
             <p><strong>สถานะ:</strong> ${item.status}</p>
             <div style="text-align:center; margin-top:10px;">
-              <img src="${qrCodeUrl}" width="80" alt="QR Code" />
+              <img src="${qrCodeUrl}" width="80" />
             </div>
           </div>
           <button onclick="window.print()">🖨️ สั่งพิมพ์ใบนี้</button>
@@ -216,7 +203,7 @@ export default function App() {
     setFormLoading(true);
     try {
       const docRef = await addDoc(collection(db, "parcels"), newParcelData);
-      const dataForPrint = { ...newParcelData, id: docRef.id, parsedDate: new Date() };
+      const dataForPrint = { ...newParcelData, id: docRef.id };
       
       if (DISCORD_WEBHOOK_URL) {
         fetch(DISCORD_WEBHOOK_URL, {
@@ -233,7 +220,6 @@ export default function App() {
       setFormData({ trackingId: generateTrackingId(), recipient: '', phone: '', status: 'รับฝากชำระแล้ว' });
       setAddressDetail('');
     } catch (err) {
-      console.error("Save parcel error:", err);
       showToast('เกิดข้อผิดพลาดในการบันทึก');
     }
     setFormLoading(false);
@@ -272,6 +258,7 @@ export default function App() {
     return <div style={{ background: '#070b14', color: '#fff', height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '18px' }}>กำลังโหลดระบบ...</div>;
   }
 
+  // หน้า Login / Register
   if (!currentUser) {
     return (
       <div style={{ minHeight: '100vh', background: '#070b14', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif', color: '#fff' }}>
@@ -299,7 +286,7 @@ export default function App() {
               <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: '#cbd5e1' }}>อีเมลผู้ใช้งาน</label>
               <input 
                 type="email" 
-                placeholder="admin@gmail.com"
+                placeholder="admin99@gmail.com"
                 value={email} 
                 onChange={(e) => setEmail(e.target.value)} 
                 required 
@@ -348,6 +335,7 @@ export default function App() {
     );
   }
 
+  // หน้าเลือกสิทธิ์ Role Selector
   if (showRoleSelector) {
     return (
       <div style={{ minHeight: '100vh', background: '#070b14', color: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif' }}>
@@ -374,6 +362,7 @@ export default function App() {
     );
   }
 
+  // หน้า Dashboard หลัก (ปรับสีตัวอักษรให้สว่างและชัดเจน ไม่กลืนกับพื้นหลัง)
   return (
     <div style={{ minHeight: '100vh', background: '#070b14', color: '#f8fafc', padding: '20px', fontFamily: 'sans-serif' }}>
       {toast && (
@@ -382,10 +371,11 @@ export default function App() {
         </div>
       )}
 
+      {/* Header (คืนค่าโลโก้ D-MAIL LOGISTICS ที่มุมซ้ายบนให้ครบถ้วน) */}
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #1e293b', paddingBottom: '15px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <h1 style={{ margin: 0, fontSize: '22px' }}>D-MAIL LOGISTICS</h1>
-          <span style={{ background: userRole === 'Admin' ? '#0284c7' : '#334155', padding: '2px 10px', borderRadius: '12px', fontSize: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 'bold', color: '#ffffff', letterSpacing: '0.5px' }}>D-MAIL LOGISTICS</h1>
+          <span style={{ background: userRole === 'Admin' ? '#0284c7' : '#334155', color: '#ffffff', padding: '3px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: '600' }}>
             {userRole}
           </span>
         </div>
@@ -397,81 +387,83 @@ export default function App() {
         </button>
       </header>
 
+      {/* สถิติภาพรวม (ปรับสีตัวหนังสือให้สว่างชัดเจน ไม่กลืนกับกล่อง) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '15px', marginBottom: '25px' }}>
-        <div style={{ background: '#101728', padding: '20px', borderRadius: '10px', border: '1px solid #1e293b' }}>
-          <div style={{ color: '#94a3b8', fontSize: '14px' }}>พัสดุทั้งหมดในระบบ</div>
-          <div style={{ fontSize: '24px', fontWeight: 'bold', marginTop: '5px' }}>{parcels.length} รายการ</div>
+        <div style={{ background: '#101728', padding: '20px', borderRadius: '10px', border: '1px solid #334155' }}>
+          <div style={{ color: '#cbd5e1', fontSize: '14px', fontWeight: '500' }}>พัสดุทั้งหมดในระบบ</div>
+          <div style={{ fontSize: '24px', fontWeight: 'bold', marginTop: '5px', color: '#ffffff' }}>{parcels.length} รายการ</div>
         </div>
-        <div style={{ background: '#101728', padding: '20px', borderRadius: '10px', border: '1px solid #1e293b' }}>
-          <div style={{ color: '#eab308', fontSize: '14px' }}>รับฝากชำระแล้ว</div>
-          <div style={{ fontSize: '24px', fontWeight: 'bold', marginTop: '5px' }}>
+        <div style={{ background: '#101728', padding: '20px', borderRadius: '10px', border: '1px solid #334155' }}>
+          <div style={{ color: '#fde047', fontSize: '14px', fontWeight: '500' }}>รับฝากชำระแล้ว</div>
+          <div style={{ fontSize: '24px', fontWeight: 'bold', marginTop: '5px', color: '#ffffff' }}>
             {parcels.filter(p => p.status === 'รับฝากชำระแล้ว').length} รายการ
           </div>
         </div>
-        <div style={{ background: '#101728', padding: '20px', borderRadius: '10px', border: '1px solid #1e293b' }}>
-          <div style={{ color: '#38bdf8', fontSize: '14px' }}>กำลังจัดส่ง</div>
-          <div style={{ fontSize: '24px', fontWeight: 'bold', marginTop: '5px' }}>
+        <div style={{ background: '#101728', padding: '20px', borderRadius: '10px', border: '1px solid #334155' }}>
+          <div style={{ color: '#38bdf8', fontSize: '14px', fontWeight: '500' }}>กำลังจัดส่ง</div>
+          <div style={{ fontSize: '24px', fontWeight: 'bold', marginTop: '5px', color: '#ffffff' }}>
             {parcels.filter(p => p.status === 'กำลังจัดส่ง').length} รายการ
           </div>
         </div>
       </div>
 
+      {/* ฟอร์มสร้างรายการพัสดุใหม่ (เฉพาะ Admin) */}
       {userRole === 'Admin' && (
-        <div style={{ background: '#101728', padding: '20px', borderRadius: '10px', border: '1px solid #1e293b', marginBottom: '25px' }}>
-          <h3 style={{ margin: '0 0 15px 0' }}>📝 สร้างรายการพัสดุใหม่ & พิมพ์ใบปะหน้า</h3>
+        <div style={{ background: '#101728', padding: '20px', borderRadius: '10px', border: '1px solid #334155', marginBottom: '25px' }}>
+          <h3 style={{ margin: '0 0 15px 0', color: '#ffffff' }}>📝 สร้างรายการพัสดุใหม่ & พิมพ์ใบปะหน้า</h3>
           <form onSubmit={handleSaveAndPrint}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '15px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '5px' }}>Tracking ID</label>
+                <label style={{ display: 'block', fontSize: '13px', color: '#cbd5e1', marginBottom: '5px' }}>Tracking ID</label>
                 <input 
                   type="text" 
                   value={formData.trackingId} 
                   onChange={(e) => setFormData({...formData, trackingId: e.target.value})} 
                   required 
-                  style={{ width: '100%', padding: '10px', background: '#070b14', border: '1px solid #334155', color: '#fff', borderRadius: '6px', boxSizing: 'border-box' }} 
+                  style={{ width: '100%', padding: '10px', background: '#070b14', border: '1px solid #475569', color: '#fff', borderRadius: '6px', boxSizing: 'border-box' }} 
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '5px' }}>ชื่อผู้รับ</label>
+                <label style={{ display: 'block', fontSize: '13px', color: '#cbd5e1', marginBottom: '5px' }}>ชื่อผู้รับ</label>
                 <input 
                   type="text" 
                   placeholder="ระบุชื่อ-นามสกุล ผู้รับ" 
                   value={formData.recipient} 
                   onChange={(e) => setFormData({...formData, recipient: e.target.value})} 
                   required 
-                  style={{ width: '100%', padding: '10px', background: '#070b14', border: '1px solid #334155', color: '#fff', borderRadius: '6px', boxSizing: 'border-box' }} 
+                  style={{ width: '100%', padding: '10px', background: '#070b14', border: '1px solid #475569', color: '#fff', borderRadius: '6px', boxSizing: 'border-box' }} 
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '5px' }}>เบอร์โทรศัพท์</label>
+                <label style={{ display: 'block', fontSize: '13px', color: '#cbd5e1', marginBottom: '5px' }}>เบอร์โทรศัพท์</label>
                 <input 
                   type="text" 
                   placeholder="0812345678" 
                   value={formData.phone} 
                   onChange={(e) => setFormData({...formData, phone: e.target.value})} 
-                  style={{ width: '100%', padding: '10px', background: '#070b14', border: '1px solid #334155', color: '#fff', borderRadius: '6px', boxSizing: 'border-box' }} 
+                  style={{ width: '100%', padding: '10px', background: '#070b14', border: '1px solid #475569', color: '#fff', borderRadius: '6px', boxSizing: 'border-box' }} 
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '5px' }}>จังหวัดปลายทาง</label>
+                <label style={{ display: 'block', fontSize: '13px', color: '#cbd5e1', marginBottom: '5px' }}>จังหวัดปลายทาง</label>
                 <select 
                   value={selectedProvince} 
                   onChange={(e) => setSelectedProvince(e.target.value)} 
-                  style={{ width: '100%', padding: '10px', background: '#070b14', border: '1px solid #334155', color: '#fff', borderRadius: '6px', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '10px', background: '#070b14', border: '1px solid #475569', color: '#fff', borderRadius: '6px', boxSizing: 'border-box' }}
                 >
                   {THAI_PROVINCES.map(prov => <option key={prov} value={prov}>{prov}</option>)}
                 </select>
               </div>
             </div>
             <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '5px' }}>ที่อยู่รายละเอียด (บ้านเลขที่, ถนน, ตำบล, อำเภอ)</label>
+              <label style={{ display: 'block', fontSize: '13px', color: '#cbd5e1', marginBottom: '5px' }}>ที่อยู่รายละเอียด (บ้านเลขที่, ถนน, ตำบล, อำเภอ)</label>
               <input 
                 type="text" 
                 placeholder="เช่น 99/9 ถ.สุขุมวิท" 
                 value={addressDetail} 
                 onChange={(e) => setAddressDetail(e.target.value)} 
                 required 
-                style={{ width: '100%', padding: '10px', background: '#070b14', border: '1px solid #334155', color: '#fff', borderRadius: '6px', boxSizing: 'border-box' }} 
+                style={{ width: '100%', padding: '10px', background: '#070b14', border: '1px solid #475569', color: '#fff', borderRadius: '6px', boxSizing: 'border-box' }} 
               />
             </div>
             <button 
@@ -485,18 +477,19 @@ export default function App() {
         </div>
       )}
 
-      <div style={{ background: '#101728', padding: '15px', borderRadius: '10px', border: '1px solid #1e293b', marginBottom: '20px', display: 'flex', flexWrap: 'wrap', gap: '15px', alignItems: 'center' }}>
+      {/* ค้นหาและตัวกรอง */}
+      <div style={{ background: '#101728', padding: '15px', borderRadius: '10px', border: '1px solid #334155', marginBottom: '20px', display: 'flex', flexWrap: 'wrap', gap: '15px', alignItems: 'center' }}>
         <input 
           type="text" 
           placeholder="🔍 ค้นหา Tracking, ผู้รับ, เบอร์โทร..." 
           value={searchTerm} 
           onChange={(e) => setSearchTerm(e.target.value)} 
-          style={{ flex: 1, minWidth: '220px', padding: '10px', background: '#070b14', border: '1px solid #334155', color: '#fff', borderRadius: '6px' }} 
+          style={{ flex: 1, minWidth: '220px', padding: '10px', background: '#070b14', border: '1px solid #475569', color: '#fff', borderRadius: '6px' }} 
         />
         <select 
           value={statusFilter} 
           onChange={(e) => setStatusFilter(e.target.value)} 
-          style={{ padding: '10px', background: '#070b14', border: '1px solid #334155', color: '#fff', borderRadius: '6px' }}
+          style={{ padding: '10px', background: '#070b14', border: '1px solid #475569', color: '#fff', borderRadius: '6px' }}
         >
           <option value="ทั้งหมด">สถานะ: ทั้งหมด</option>
           <option value="รับฝากชำระแล้ว">รับฝากชำระแล้ว</option>
@@ -506,21 +499,22 @@ export default function App() {
         <select 
           value={dateFilter} 
           onChange={(e) => setDateFilter(e.target.value)} 
-          style={{ padding: '10px', background: '#070b14', border: '1px solid #334155', color: '#fff', borderRadius: '6px' }}
+          style={{ padding: '10px', background: '#070b14', border: '1px solid #475569', color: '#fff', borderRadius: '6px' }}
         >
           <option value="ทั้งหมด">เวลา: ทั้งหมด</option>
           <option value="วันนี้">วันนี้</option>
         </select>
       </div>
 
-      <div style={{ background: '#101728', borderRadius: '10px', border: '1px solid #1e293b', overflow: 'hidden' }}>
-        <div style={{ padding: '15px', borderBottom: '1px solid #1e293b', fontWeight: 'bold' }}>
+      {/* ตารางแสดงรายการพัสดุ */}
+      <div style={{ background: '#101728', borderRadius: '10px', border: '1px solid #334155', overflow: 'hidden' }}>
+        <div style={{ padding: '15px', borderBottom: '1px solid #334155', fontWeight: 'bold', color: '#ffffff' }}>
           📋 รายการพัสดุทั้งหมดในระบบ ({filteredParcels.length})
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
             <thead>
-              <tr style={{ background: '#070b14', borderBottom: '1px solid #334155', color: '#94a3b8' }}>
+              <tr style={{ background: '#070b14', borderBottom: '1px solid #475569', color: '#cbd5e1' }}>
                 <th style={{ padding: '12px' }}>Tracking ID</th>
                 <th style={{ padding: '12px' }}>ผู้รับ & เบอร์โทร</th>
                 <th style={{ padding: '12px' }}>ปลายทาง</th>
@@ -531,44 +525,45 @@ export default function App() {
             <tbody>
               {filteredParcels.length === 0 ? (
                 <tr>
-                  <td colSpan="5" style={{ textAlign: 'center', padding: '30px', color: '#64748b' }}>ไม่พบข้อมูลพัสดุในระบบ</td>
+                  <td colSpan="5" style={{ textAlign: 'center', padding: '30px', color: '#94a3b8' }}>ไม่พบข้อมูลพัสดุในระบบ</td>
                 </tr>
               ) : (
                 filteredParcels.map(item => (
                   <tr key={item.id} style={{ borderBottom: '1px solid #1e293b' }}>
                     <td style={{ padding: '12px', fontWeight: 'bold', color: '#38bdf8' }}>{item.trackingId}</td>
-                    <td style={{ padding: '12px' }}>
+                    <td style={{ padding: '12px', color: '#f8fafc' }}>
                       <div>{item.recipient}</div>
-                      <div style={{ fontSize: '12px', color: '#94a3b8' }}>{item.phone || '-'}</div>
+                      <div style={{ fontSize: '12px', color: '#cbd5e1' }}>{item.phone || '-'}</div>
                     </td>
-                    <td style={{ padding: '12px', maxWidth: '250px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.location}</td>
+                    <td style={{ padding: '12px', maxWidth: '250px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#f8fafc' }}>{item.location}</td>
                     <td style={{ padding: '12px' }}>
                       {userRole === 'Admin' ? (
                         <select 
                           value={item.status} 
                           onChange={(e) => updateStatus(item.id, e.target.value)} 
-                          style={{ padding: '6px', background: '#070b14', border: '1px solid #334155', color: '#fff', borderRadius: '4px' }}
+                          style={{ padding: '6px', background: '#070b14', border: '1px solid #475569', color: '#fff', borderRadius: '4px' }}
                         >
                           <option value="รับฝากชำระแล้ว">รับฝากชำระแล้ว</option>
                           <option value="กำลังจัดส่ง">กำลังจัดส่ง</option>
                           <option value="จัดส่งสำเร็จ">จัดส่งสำเร็จ</option>
                         </select>
                       ) : (
-                        <span>{item.status}</span>
+                        <span style={{ color: '#f8fafc' }}>{item.status}</span>
                       )}
                     </td>
                     <td style={{ padding: '12px', textAlign: 'center' }}>
                       <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                        {/* เปิดสิทธิ์ให้ User สามารถกดปุ่มพิมพ์ใบปะหน้าได้เช่นเดียวกับ Admin */}
                         <button 
                           onClick={() => printLabel(item)} 
-                          style={{ padding: '6px 12px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                          style={{ padding: '6px 12px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '600' }}
                         >
                           🖨️ พิมพ์
                         </button>
                         {userRole === 'Admin' && (
                           <button 
                             onClick={() => deleteParcel(item.id)} 
-                            style={{ padding: '6px 12px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                            style={{ padding: '6px 12px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '600' }}
                           >
                             ลบ
                           </button>

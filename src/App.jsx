@@ -72,6 +72,10 @@ export default function App() {
   const [toast, setToast] = useState('');
   const [selectedProvince, setSelectedProvince] = useState('กรุงเทพมหานคร');
   const [addressDetail, setAddressDetail] = useState('');
+  
+  // State สำหรับจัดการ Modal แสดง QR Code ฝั่ง User
+  const [qrModalItem, setQrModalItem] = useState(null);
+
   const [formData, setFormData] = useState({ 
     trackingId: generateTrackingId(), 
     recipient: '', 
@@ -151,8 +155,7 @@ export default function App() {
     if (typeof JsBarcode === 'function') {
       JsBarcode(svgNode, item.trackingId, { format: "CODE128", width: 2, height: 45, displayValue: true });
     }
-    
-    // สร้าง QR Code จริงที่บรรจุข้อมูล Tracking และรายละเอียดพัสดุ
+     
     const qrData = `Tracking: ${item.trackingId} | ผู้รับ: ${item.recipient} | ปลายทาง: ${item.location} | สถานะ: ${item.status}`;
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(qrData)}`;
 
@@ -207,7 +210,7 @@ export default function App() {
     try {
       const docRef = await addDoc(collection(db, "parcels"), newParcelData);
       const dataForPrint = { ...newParcelData, id: docRef.id };
-      
+       
       if (DISCORD_WEBHOOK_URL) {
         fetch(DISCORD_WEBHOOK_URL, {
           method: 'POST',
@@ -220,6 +223,7 @@ export default function App() {
 
       printLabel(dataForPrint);
       showToast('บันทึกและสร้างใบปะหน้าสำเร็จ!');
+      // สุ่ม Tracking ID ใหม่ให้อัตโนมัติสำหรับรายการถัดไปทันที
       setFormData({ trackingId: generateTrackingId(), recipient: '', phone: '', status: 'รับฝากชำระแล้ว' });
       setAddressDetail('');
     } catch (err) {
@@ -261,7 +265,6 @@ export default function App() {
     return <div style={{ background: '#070b14', color: '#fff', height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '18px' }}>กำลังโหลดระบบ...</div>;
   }
 
-  // หน้า Login / Register (แก้สีตัวอักษรให้สว่างชัดเจน ไม่กลืนกับพื้นหลัง)
   if (!currentUser) {
     return (
       <div style={{ minHeight: '100vh', background: '#070b14', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif', color: '#ffffff' }}>
@@ -283,7 +286,7 @@ export default function App() {
           <p style={{ color: '#cbd5e1', fontSize: '13px', marginBottom: '25px' }}>กรุณาเข้าสู่ระบบเพื่อใช้งานระบบ</p>
 
           {authError && <div style={{ background: '#ef444420', border: '1px solid #ef4444', color: '#fca5a5', padding: '10px', borderRadius: '8px', marginBottom: '20px', fontSize: '13px' }}>{authError}</div>}
-          
+           
           <form onSubmit={handleAuthSubmit} style={{ textAlign: 'left' }}>
             <div style={{ marginBottom: '18px' }}>
               <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#f1f5f9', fontWeight: '500' }}>อีเมลผู้ใช้งาน</label>
@@ -338,7 +341,6 @@ export default function App() {
     );
   }
 
-  // หน้าเลือกสิทธิ์ Role Selector
   if (showRoleSelector) {
     return (
       <div style={{ minHeight: '100vh', background: '#070b14', color: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif' }}>
@@ -366,9 +368,11 @@ export default function App() {
   }
 
   // -------------------------------------------------------------
-  // หน้าจอสำหรับ User (ไม่มีแดชบอร์ดสถิติ ไม่สร้างพัสดุ เน้นค้นหาพัสดุเพื่อดูสถานะและกดพิมพ์ใบปะหน้า)
+  // หน้าจอสำหรับ User (เปลี่ยนปุ่มพิมพ์ใบปะหน้า เป็นปุ่มสแกน QR Code พร้อม Modal)
   // -------------------------------------------------------------
   if (userRole === 'User') {
+    const activeQrUrl = qrModalItem ? `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`Tracking: ${qrModalItem.trackingId} | ผู้รับ: ${qrModalItem.recipient} | ปลายทาง: ${qrModalItem.location} | สถานะ: ${qrModalItem.status}`)}` : '';
+
     return (
       <div style={{ minHeight: '100vh', background: '#070b14', color: '#f8fafc', padding: '20px', fontFamily: 'sans-serif' }}>
         {toast && (
@@ -377,7 +381,6 @@ export default function App() {
           </div>
         )}
 
-        {/* Header ของ User */}
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', borderBottom: '1px solid #1e293b', paddingBottom: '15px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 'bold', color: '#ffffff' }}>D-MAIL LOGISTICS</h1>
@@ -393,10 +396,9 @@ export default function App() {
           </button>
         </header>
 
-        {/* ช่องค้นหาพัสดุ */}
         <div style={{ background: '#101728', padding: '20px', borderRadius: '10px', border: '1px solid #334155', marginBottom: '20px' }}>
           <h3 style={{ margin: '0 0 10px 0', color: '#ffffff', fontSize: '16px' }}>🔍 ค้นหาและติดตามสถานะพัสดุ</h3>
-          <p style={{ color: '#cbd5e1', fontSize: '13px', marginBottom: '15px' }}>ท่านสามารถค้นหาเลข Tracking หรือชื่อผู้รับเพื่อตรวจสอบสถานะและกดพิมพ์ใบปะหน้าได้</p>
+          <p style={{ color: '#cbd5e1', fontSize: '13px', marginBottom: '15px' }}>ท่านสามารถค้นหาเลข Tracking หรือชื่อผู้รับเพื่อตรวจสอบสถานะและสแกน QR Code ข้อมูลพัสดุ</p>
           <input 
             type="text" 
             placeholder="🔍 ค้นหา Tracking ID, ชื่อผู้รับ, เบอร์โทร..." 
@@ -406,7 +408,6 @@ export default function App() {
           />
         </div>
 
-        {/* ตารางแสดงรายการพัสดุสำหรับ User */}
         <div style={{ background: '#101728', borderRadius: '10px', border: '1px solid #334155', overflow: 'hidden' }}>
           <div style={{ padding: '15px', borderBottom: '1px solid #334155', fontWeight: 'bold', color: '#ffffff' }}>
             📋 รายการพัสดุในระบบ ({filteredParcels.length})
@@ -419,7 +420,7 @@ export default function App() {
                   <th style={{ padding: '12px' }}>ผู้รับ & เบอร์โทร</th>
                   <th style={{ padding: '12px' }}>ปลายทาง</th>
                   <th style={{ padding: '12px' }}>สถานะ</th>
-                  <th style={{ padding: '12px', textAlign: 'center' }}>พิมพ์ใบปะหน้า</th>
+                  <th style={{ padding: '12px', textAlign: 'center' }}>สแกน QR คิวอาร์โค้ด</th>
                 </tr>
               </thead>
               <tbody>
@@ -439,10 +440,10 @@ export default function App() {
                       <td style={{ padding: '12px', color: '#fde047', fontWeight: '600' }}>{item.status}</td>
                       <td style={{ padding: '12px', textAlign: 'center' }}>
                         <button 
-                          onClick={() => printLabel(item)} 
+                          onClick={() => setQrModalItem(item)} 
                           style={{ padding: '6px 14px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '600' }}
                         >
-                          🖨️ พิมพ์ใบปะหน้า
+                          📱 สแกน QR Code
                         </button>
                       </td>
                     </tr>
@@ -452,12 +453,36 @@ export default function App() {
             </table>
           </div>
         </div>
+
+        {/* Modal สำหรับแสดง QR Code แทนการพิมพ์ใบปะหน้า */}
+        {qrModalItem && (
+          <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 }}>
+            <div style={{ background: '#101728', padding: '25px', borderRadius: '12px', width: '320px', border: '1px solid #334155', textAlign: 'center' }}>
+              <h3 style={{ margin: '0 0 10px 0', color: '#ffffff' }}>QR Code สำหรับสแกน</h3>
+              <p style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '15px' }}>Tracking: {qrModalItem.trackingId}</p>
+              <div style={{ background: '#fff', padding: '10px', display: 'inline-block', borderRadius: '8px', marginBottom: '15px' }}>
+                <img src={activeQrUrl} alt="QR Code" width="180" height="180" />
+              </div>
+              <div style={{ fontSize: '13px', color: '#cbd5e1', marginBottom: '20px', textAlign: 'left', background: '#070b14', padding: '10px', borderRadius: '6px' }}>
+                <div><strong>ผู้รับ:</strong> {qrModalItem.recipient}</div>
+                <div><strong>ปลายทาง:</strong> {qrModalItem.location}</div>
+                <div><strong>สถานะ:</strong> {qrModalItem.status}</div>
+              </div>
+              <button 
+                onClick={() => setQrModalItem(null)}
+                style={{ width: '100%', padding: '10px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
+              >
+                ปิดหน้าต่าง
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
   // -------------------------------------------------------------
-  // หน้าจอสำหรับ Admin (เต็มระบบ: แดชบอร์ด, สร้างพัสดุ, เปลี่ยนสถานะ, ลบ)
+  // หน้าจอสำหรับ Admin (ช่อง Tracking ID รันออโต้)
   // -------------------------------------------------------------
   return (
     <div style={{ minHeight: '100vh', background: '#070b14', color: '#f8fafc', padding: '20px', fontFamily: 'sans-serif' }}>
@@ -467,7 +492,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Header ของ Admin */}
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #1e293b', paddingBottom: '15px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 'bold', color: '#ffffff' }}>D-MAIL LOGISTICS</h1>
@@ -483,7 +507,6 @@ export default function App() {
         </button>
       </header>
 
-      {/* สถิติภาพรวม */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '15px', marginBottom: '25px' }}>
         <div style={{ background: '#101728', padding: '20px', borderRadius: '10px', border: '1px solid #334155' }}>
           <div style={{ color: '#cbd5e1', fontSize: '14px', fontWeight: '500' }}>พัสดุทั้งหมดในระบบ</div>
@@ -503,19 +526,18 @@ export default function App() {
         </div>
       </div>
 
-      {/* ฟอร์มสร้างรายการพัสดุใหม่ */}
       <div style={{ background: '#101728', padding: '20px', borderRadius: '10px', border: '1px solid #334155', marginBottom: '25px' }}>
         <h3 style={{ margin: '0 0 15px 0', color: '#ffffff' }}>📝 สร้างรายการพัสดุใหม่ & พิมพ์ใบปะหน้า</h3>
         <form onSubmit={handleSaveAndPrint}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '15px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '13px', color: '#cbd5e1', marginBottom: '5px' }}>Tracking ID</label>
+              <label style={{ display: 'block', fontSize: '13px', color: '#cbd5e1', marginBottom: '5px' }}>Tracking ID (รันออโต้)</label>
               <input 
                 type="text" 
                 value={formData.trackingId} 
                 onChange={(e) => setFormData({...formData, trackingId: e.target.value})} 
                 required 
-                style={{ width: '100%', padding: '10px', background: '#070b14', border: '1px solid #475569', color: '#fff', borderRadius: '6px', boxSizing: 'border-box' }} 
+                style={{ width: '100%', padding: '10px', background: '#070b14', border: '1px solid #475569', color: '#38bdf8', borderRadius: '6px', boxSizing: 'border-box', fontWeight: 'bold' }} 
               />
             </div>
             <div>
@@ -571,7 +593,6 @@ export default function App() {
         </form>
       </div>
 
-      {/* ค้นหาและตัวกรอง */}
       <div style={{ background: '#101728', padding: '15px', borderRadius: '10px', border: '1px solid #334155', marginBottom: '20px', display: 'flex', flexWrap: 'wrap', gap: '15px', alignItems: 'center' }}>
         <input 
           type="text" 
@@ -600,7 +621,6 @@ export default function App() {
         </select>
       </div>
 
-      {/* ตารางแสดงรายการพัสดุ */}
       <div style={{ background: '#101728', borderRadius: '10px', border: '1px solid #334155', overflow: 'hidden' }}>
         <div style={{ padding: '15px', borderBottom: '1px solid #334155', fontWeight: 'bold', color: '#ffffff' }}>
           📋 รายการพัสดุทั้งหมดในระบบ ({filteredParcels.length})
@@ -634,7 +654,7 @@ export default function App() {
                       <select 
                         value={item.status} 
                         onChange={(e) => updateStatus(item.id, e.target.value)} 
-                        style={{ padding: '6px', background: '#070b14', border: '1px solid #475569', color: '#fff', borderRadius: '4px' }}
+                        style={{ padding: '6px', background: '#070b14', border: '1px solid #475569', color: '#fde047', borderRadius: '4px', fontWeight: '600' }}
                       >
                         <option value="รับฝากชำระแล้ว">รับฝากชำระแล้ว</option>
                         <option value="กำลังจัดส่ง">กำลังจัดส่ง</option>
@@ -642,20 +662,18 @@ export default function App() {
                       </select>
                     </td>
                     <td style={{ padding: '12px', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
-                        <button 
-                          onClick={() => printLabel(item)} 
-                          style={{ padding: '6px 12px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '600' }}
-                        >
-                          🖨️ พิมพ์
-                        </button>
-                        <button 
-                          onClick={() => deleteParcel(item.id)} 
-                          style={{ padding: '6px 12px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '600' }}
-                        >
-                          ลบ
-                        </button>
-                      </div>
+                      <button 
+                        onClick={() => printLabel(item)} 
+                        style={{ padding: '6px 12px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', marginRight: '6px', fontWeight: '600' }}
+                      >
+                        🖨️ พิมพ์ใบปะหน้า
+                      </button>
+                      <button 
+                        onClick={() => deleteParcel(item.id)} 
+                        style={{ padding: '6px 12px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '600' }}
+                      >
+                        🗑️ ลบ
+                      </button>
                     </td>
                   </tr>
                 ))

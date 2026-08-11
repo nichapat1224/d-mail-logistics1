@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import JsBarcode from 'jsbarcode';
-import emailjs from '@emailjs/browser'; 
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { 
@@ -58,7 +57,6 @@ export default function App() {
   const [parcels, setParcels] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ทั้งหมด');
-  const [dateFilter, setDateFilter] = useState('ทั้งหมด');
   const [toast, setToast] = useState('');
   const [selectedProvince, setSelectedProvince] = useState('กรุงเทพมหานคร');
   const [addressDetail, setAddressDetail] = useState('');
@@ -66,11 +64,19 @@ export default function App() {
   const [formData, setFormData] = useState({ 
     trackingId: generateTrackingId(), 
     recipient: '', 
-    recipientEmail: '', // 📌 ช่องอีเมลผู้รับ
+    recipientEmail: '', 
     phone: '', 
     status: 'รับฝากชำระแล้ว' 
   });
   const [formLoading, setFormLoading] = useState(false);
+
+  // โหลด EmailJS script แบบปลอดภัยจาก CDN เข้ามาในตัวแอปอัตโนมัติ
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = "https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js";
+    script.async = true;
+    document.body.appendChild(script);
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -201,8 +207,8 @@ export default function App() {
       const docRef = await addDoc(collection(db, "parcels"), newParcelData);
       const dataForPrint = { ...newParcelData, id: docRef.id };
        
-      // 📌 ส่งอีเมลแจ้งเตือนผ่าน EmailJS ไปยังผู้รับอัตโนมัติ
-      if (formData.recipientEmail) {
+      // ส่งอีเมลผ่าน window.emailjs ที่โหลดมาจาก CDN
+      if (formData.recipientEmail && window.emailjs) {
         const emailParams = {
           tracking_id: formData.trackingId,
           recipient_name: formData.recipient,
@@ -210,7 +216,7 @@ export default function App() {
           parcel_status: formData.status,
           parcel_location: fullLocation
         };
-        emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, emailParams, EMAILJS_PUBLIC_KEY)
+        window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, emailParams, EMAILJS_PUBLIC_KEY)
           .then(() => console.log('Email sent successfully'))
           .catch((err) => console.log('Email Error:', err));
       }

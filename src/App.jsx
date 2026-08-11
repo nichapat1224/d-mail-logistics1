@@ -27,39 +27,181 @@ const analytics = getAnalytics(app);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-// 📌 ค่า EmailJS ของคุณที่ใส่ให้แล้ว
 const EMAILJS_SERVICE_ID = "service_a1qkxop";
 const EMAILJS_TEMPLATE_ID = "template_okn7sbt";
 const EMAILJS_PUBLIC_KEY = "vY-ZC8b43U-idsLpR";
 
-// ... (ส่วน THAI_PROVINCES และ generateTrackingId คงเดิมตามโค้ดคุณ)
-const THAI_PROVINCES = [ "กรุงเทพมหานคร", "กระบี่", "กาญจนบุรี", "กาฬสินธุ์", "กำแพงเพชร", "ขอนแก่น", "จันทบุรี", "ฉะเชิงเทรา", "ชลบุรี", "ชัยนาท", "ชัยภูมิ", "ชุมพร", "เชียงราย", "เชียงใหม่", "ตรัง", "ตราด", "ตาก", "นครนายก", "นครปฐม", "นครพนม", "นครราชสีมา", "นครศรีธรรมราช", "นครสวรรค์", "นนทบุรี", "นราธิวาส", "น่าน", "บึงกาฬ", "บุรีรัมย์", "ปทุมธานี", "ประจวบคีรีขันธ์", "ปราจีนบุรี", "ปัตตานี", "พระนครศรีอยุธยา", "พะเยา", "พังงา", "พัทลุง", "พิจิตร", "พิษณุโลก", "เพชรบุรี", "เพชรบูรณ์", "แพร่", "ภูเก็ต", "มหาสารคาม", "มุกดาหาร", "แม่ฮ่องสอน", "ยโสธร", "ยะลา", "ร้อยเอ็ด", "ระนอง", "ระยอง", "ราชบุรี", "ลพบุรี", "ลำปาง", "ลำพูน", "เลย", "ศรีสะเกษ", "สกลนคร", "สงขลา", "สตูล", "สมุทรปราการ", "สมุทรสงคราม", "สมุทรสาคร", "สระแก้ว", "สระบุรี", "สิงห์บุรี", "สุโขทัย", "สุพรรณบุรี", "สุราษฎร์ธานี", "สุรินทร์", "หนองคาย", "หนองบัวลำภู", "อ่างทอง", "อำนาจเจริญ", "อุดรธานี", "อุตรดิตถ์", "อุทัยธานี", "อุบลราชธานี" ];
+const THAI_PROVINCES = [
+  "กรุงเทพมหานคร", "กระบี่", "กาญจนบุรี", "กาฬสินธุ์", "กำแพงเพชร", "ขอนแก่น", "จันทบุรี", "ฉะเชิงเทรา", 
+  "ชลบุรี", "ชัยนาท", "ชัยภูมิ", "ชุมพร", "เชียงราย", "เชียงใหม่", "ตรัง", "ตราด", "ตาก", "นครนายก", 
+  "นครปฐม", "นครพนม", "นครราชสีมา", "นครศรีธรรมราช", "นครสวรรค์", "นนทบุรี", "นราธิวาส", "น่าน", 
+  "บึงกาฬ", "บุรีรัมย์", "ปทุมธานี", "ประจวบคีรีขันธ์", "ปราจีนบุรี", "ปัตตานี", "พระนครศรีอยุธยา", 
+  "พะเยา", "พังงา", "พัทลุง", "พิจิตร", "พิษณุโลก", "เพชรบุรี", "เพชรบูรณ์", "แพร่", "ภูเก็ต", 
+  "มหาสารคาม", "มุกดาหาร", "แม่ฮ่องสอน", "ยโสธร", "ยะลา", "ร้อยเอ็ด", "ระนอง", "ระยอง", "ราชบุรี", 
+  "ลพบุรี", "ลำปาง", "ลำพูน", "เลย", "ศรีสะเกษ", "สกลนคร", "สงขลา", "สตูล", "สมุทรปราการ", 
+  "สมุทรสงคราม", "สมุทรสาคร", "สระแก้ว", "สระบุรี", "สิงห์บุรี", "สุโขทัย", "สุพรรณบุรี", "สุราษฎร์ธานี", 
+  "สุรินทร์", "หนองคาย", "หนองบัวลำภู", "อ่างทอง", "อำนาจเจริญ", "อุดรธานี", "อุตรดิตถ์", "อุทัยธานี", "อุบลราชธานี"
+];
+
 const generateTrackingId = () => 'DM' + Math.floor(10000000 + Math.random() * 90000000) + 'TH';
 
 export default function App() {
-  // ... (ทุกอย่างคงเดิมเหมือนที่คุณส่งมา ผมเก็บโครงสร้างไว้ให้ครบแล้ว)
-  // [ตรงนี้เป็นส่วนของ State และ useEffect ที่คุณมีอยู่แล้ว]
+  const [currentUser, setCurrentUser] = useState(null);
+  const [userRole, setUserRole] = useState(null); 
+  const [authLoading, setAuthLoading] = useState(true);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [showRoleSelector, setShowRoleSelector] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [parcels, setParcels] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ทั้งหมด');
+  const [dateFilter, setDateFilter] = useState('ทั้งหมด');
+  const [toast, setToast] = useState('');
+  const [selectedProvince, setSelectedProvince] = useState('กรุงเทพมหานคร');
+  const [addressDetail, setAddressDetail] = useState('');
   
-  // ในส่วน handleSaveAndPrint ของคุณ ผมใส่ logic EmailJS ที่ถูกต้องให้แล้วครับ:
+  const [formData, setFormData] = useState({ 
+    trackingId: generateTrackingId(), 
+    recipient: '', 
+    recipientEmail: '', // 📌 ช่องอีเมลผู้รับ
+    phone: '', 
+    status: 'รับฝากชำระแล้ว' 
+  });
+  const [formLoading, setFormLoading] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setCurrentUser(user);
+        const userSnap = await getDoc(doc(db, "users", user.uid));
+        if (userSnap.exists() && userSnap.data().role) { 
+          setUserRole(userSnap.data().role); 
+          setShowRoleSelector(false); 
+        } else { 
+          setUserRole(null);
+          setShowRoleSelector(true); 
+        }
+      } else { 
+        setCurrentUser(null); 
+        setUserRole(null); 
+        setShowRoleSelector(false);
+      }
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const q = query(collection(db, "parcels"), orderBy("createdAt", "desc"));
+    return onSnapshot(q, (snapshot) => {
+      setParcels(snapshot.docs.map(docSnap => ({ 
+        id: docSnap.id, 
+        ...docSnap.data(), 
+        parsedDate: docSnap.data().createdAt?.toDate() || new Date() 
+      })));
+    });
+  }, [currentUser]);
+
+  const showToast = (message) => { 
+    setToast(message); 
+    setTimeout(() => setToast(''), 3000); 
+  };
+
+  const handleAuthSubmit = async (e) => {
+    e.preventDefault();
+    setAuthError('');
+    try {
+      if (isRegistering) {
+        if (password !== confirmPassword) throw new Error('รหัสผ่านไม่ตรงกัน');
+        await createUserWithEmailAndPassword(auth, email, password);
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
+    } catch (err) { 
+      setAuthError(err.message); 
+    }
+  };
+
+  const selectRole = async (role) => {
+    if (!currentUser) return;
+    try {
+      await setDoc(doc(db, "users", currentUser.uid), { role, email: currentUser.email }, { merge: true });
+      setUserRole(role);
+      setShowRoleSelector(false);
+      showToast(`บันทึกสิทธิ์เป็น ${role} สำเร็จ`);
+    } catch (err) {
+      setAuthError(err.message);
+    }
+  };
+
+  const printLabel = (item) => {
+    const printWindow = window.open('', '_blank', 'width=500,height=600');
+    const svgNode = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    if (typeof JsBarcode === 'function') {
+      JsBarcode(svgNode, item.trackingId, { format: "CODE128", width: 2, height: 45, displayValue: true });
+    }
+     
+    const qrData = `Tracking: ${item.trackingId} | ผู้รับ: ${item.recipient} | ปลายทาง: ${item.location} | สถานะ: ${item.status}`;
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(qrData)}`;
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Print Label - ${item.trackingId}</title>
+          <style>
+            body { font-family: sans-serif; text-align: center; padding: 20px; color: #000; }
+            .label { border: 2px dashed #000; padding: 20px; width: 280px; margin: auto; text-align: left; background: #fff; }
+            .barcode { text-align: center; margin-bottom: 10px; }
+            .barcode svg { width: 100%; height: auto; }
+            button { margin-top: 20px; padding: 10px 20px; cursor: pointer; background: #0284c7; color: #fff; border: none; border-radius: 4px; font-size: 16px; }
+          </style>
+        </head>
+        <body>
+          <div class="label">
+            <h3 style="text-align:center; margin:0 0 10px 0;">D-MAIL LOGISTICS</h3>
+            <div class="barcode">${svgNode.outerHTML}</div>
+            <p><strong>Tracking:</strong> ${item.trackingId}</p>
+            <p><strong>ผู้รับ:</strong> ${item.recipient}</p>
+            <p><strong>เบอร์โทร:</strong> ${item.phone || '-'}</p>
+            <p><strong>อีเมล:</strong> ${item.recipientEmail || '-'}</p>
+            <p><strong>ปลายทาง:</strong> ${item.location}</p>
+            <p><strong>สถานะ:</strong> ${item.status}</p>
+            <div style="text-align:center; margin-top:12px;">
+              <img src="${qrCodeUrl}" width="90" alt="QR Code" />
+              <div style="font-size: 10px; color: #555; margin-top: 4px;">สแกนเพื่อตรวจสอบข้อมูล</div>
+            </div>
+          </div>
+          <button onclick="window.print()">🖨️ สั่งพิมพ์ใบนี้</button>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   const handleSaveAndPrint = async (e) => {
     e.preventDefault();
     if (!formData.recipient || !addressDetail) {
-      alert('กรุณากรอกข้อมูลให้ครบ');
+      showToast('กรุณากรอกข้อมูลผู้รับและที่อยู่ให้ครบถ้วน');
       return;
     }
     const fullLocation = `${addressDetail} จ.${selectedProvince}`;
     const newParcelData = { 
       ...formData, 
       location: fullLocation, 
-      createdBy: currentUser?.email, 
+      createdBy: currentUser.email, 
       createdAt: serverTimestamp() 
     };
 
     setFormLoading(true);
     try {
       const docRef = await addDoc(collection(db, "parcels"), newParcelData);
-      
-      // ส่วนการส่งอีเมล
+      const dataForPrint = { ...newParcelData, id: docRef.id };
+       
+      // 📌 ส่งอีเมลแจ้งเตือนผ่าน EmailJS ไปยังผู้รับอัตโนมัติ
       if (formData.recipientEmail) {
         const emailParams = {
           tracking_id: formData.trackingId,
@@ -68,22 +210,207 @@ export default function App() {
           parcel_status: formData.status,
           parcel_location: fullLocation
         };
-        
-        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, emailParams, EMAILJS_PUBLIC_KEY);
-        console.log('Email sent successfully');
+        emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, emailParams, EMAILJS_PUBLIC_KEY)
+          .then(() => console.log('Email sent successfully'))
+          .catch((err) => console.log('Email Error:', err));
       }
 
-      printLabel({ ...newParcelData, id: docRef.id });
-      alert('บันทึกและส่งอีเมลสำเร็จ!');
+      printLabel(dataForPrint);
+      showToast('บันทึก, ส่งอีเมล และสร้างใบปะหน้าสำเร็จ!');
       setFormData({ trackingId: generateTrackingId(), recipient: '', recipientEmail: '', phone: '', status: 'รับฝากชำระแล้ว' });
       setAddressDetail('');
     } catch (err) {
-      console.error(err);
-      alert('เกิดข้อผิดพลาดในการบันทึกหรือส่งอีเมล');
+      showToast('เกิดข้อผิดพลาดในการบันทึก');
     }
     setFormLoading(false);
   };
 
-  // [ใส่ส่วน render UI หรือ return (...)] 
-  // ... ตามโครงสร้างเดิมของคุณได้เลยครับ
+  if (authLoading) {
+    return <div style={{ textAlign: 'center', marginTop: '50px', color: '#fff', background: '#111', height: '100vh', paddingTop: '50px' }}>กำลังโหลดระบบ...</div>;
+  }
+
+  if (!currentUser) {
+    return (
+      <div style={{ background: '#111', minHeight: '100vh', color: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif' }}>
+        <form onSubmit={handleAuthSubmit} style={{ background: '#1e1e1e', padding: '30px', borderRadius: '10px', width: '350px' }}>
+          <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>D-MAIL LOGISTICS</h2>
+          {authError && <div style={{ color: '#ef4444', marginBottom: '15px', fontSize: '14px' }}>{authError}</div>}
+          <div style={{ marginBottom: '15px' }}>
+            <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>อีเมล</label>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} required style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#2a2a2a', color: '#fff' }} />
+          </div>
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>รหัสผ่าน</label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} required style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#2a2a2a', color: '#fff' }} />
+          </div>
+          {isRegistering && (
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>ยืนยันรหัสผ่าน</label>
+              <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#2a2a2a', color: '#fff' }} />
+            </div>
+          )}
+          <button type="submit" style={{ width: '100%', padding: '10px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '10px' }}>
+            {isRegistering ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}
+          </button>
+          <div style={{ textAlign: 'center', fontSize: '14px', cursor: 'pointer', color: '#38bdf8' }} onClick={() => setIsRegistering(!isRegistering)}>
+            {isRegistering ? 'มีบัญชีอยู่แล้ว? เข้าสู่ระบบ' : 'ยังไม่มีบัญชี? สมัครสมาชิก'}
+          </div>
+        </form>
+      </div>
+    );
+  }
+
+  if (showRoleSelector) {
+    return (
+      <div style={{ background: '#111', minHeight: '100vh', color: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif' }}>
+        <div style={{ background: '#1e1e1e', padding: '30px', borderRadius: '10px', width: '350px', textAlign: 'center' }}>
+          <h2>เลือกบทบาทของคุณ</h2>
+          <p style={{ color: '#aaa', fontSize: '14px', marginBottom: '20px' }}>กรุณาเลือกสิทธิ์การใช้งานระบบ</p>
+          <button onClick={() => selectRole('Admin')} style={{ width: '100%', padding: '12px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '10px' }}>Admin (ผู้ดูแลระบบ)</button>
+          <button onClick={() => selectRole('User')} style={{ width: '100%', padding: '12px', background: '#475569', color: '#fff', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>User (ผู้ใช้งานทั่วไป)</button>
+        </div>
+      </div>
+    );
+  }
+
+  const filteredParcels = parcels.filter(item => {
+    const matchSearch = item.trackingId.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          item.recipient.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          (item.phone && item.phone.includes(searchTerm));
+    const matchStatus = statusFilter === 'ทั้งหมด' || item.status === statusFilter;
+    return matchSearch && matchStatus;
+  });
+
+  return (
+    <div style={{ background: '#111', minHeight: '100vh', color: '#fff', fontFamily: 'sans-serif', paddingBottom: '40px' }}>
+      {toast && (
+        <div style={{ position: 'fixed', top: '20px', right: '20px', background: '#22c55e', color: '#fff', padding: '12px 20px', borderRadius: '5px', zIndex: 1000, fontWeight: 'bold', boxShadow: '0 4px 6px rgba(0,0,0,0.3)' }}>
+          {toast}
+        </div>
+      )}
+
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 40px', background: '#1a1a1a', borderBottom: '1px solid #333' }}>
+        <h2 style={{ margin: 0, letterSpacing: '1px' }}>D-MAIL LOGISTICS</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <span style={{ background: userRole === 'Admin' ? '#0284c7' : '#475569', padding: '5px 12px', borderRadius: '15px', fontSize: '13px' }}>
+            {userRole === 'Admin' ? 'Admin (ผู้ดูแลระบบ)' : 'User (ผู้ใช้งาน)'}
+          </span>
+          <button onClick={() => signOut(auth)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>ออกจากระบบ</button>
+        </div>
+      </div>
+
+      <div style={{ padding: '30px 40px', maxWidth: '1200px', margin: '0 auto' }}>
+        {/* สถิติ */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '30px' }}>
+          <div style={{ background: '#1e1e1e', padding: '20px', borderRadius: '10px', textAlign: 'center', border: '1px solid #333' }}>
+            <div style={{ color: '#aaa', fontSize: '14px' }}>พัสดุทั้งหมดในระบบ</div>
+            <div style={{ fontSize: '24px', fontWeight: 'bold', marginTop: '5px' }}>{parcels.length} รายการ</div>
+          </div>
+          <div style={{ background: '#1e1e1e', padding: '20px', borderRadius: '10px', textAlign: 'center', border: '1px solid #333' }}>
+            <div style={{ color: '#aaa', fontSize: '14px' }}>รับฝากชำระแล้ว</div>
+            <div style={{ fontSize: '24px', fontWeight: 'bold', marginTop: '5px' }}>{parcels.filter(p => p.status === 'รับฝากชำระแล้ว').length} รายการ</div>
+          </div>
+          <div style={{ background: '#1e1e1e', padding: '20px', borderRadius: '10px', textAlign: 'center', border: '1px solid #333' }}>
+            <div style={{ color: '#aaa', fontSize: '14px' }}>กำลังจัดส่ง</div>
+            <div style={{ fontSize: '24px', fontWeight: 'bold', marginTop: '5px' }}>{parcels.filter(p => p.status === 'กำลังจัดส่ง').length} รายการ</div>
+          </div>
+        </div>
+
+        {/* ฟอร์มเพิ่มพัสดุสำหรับ Admin */}
+        {userRole === 'Admin' && (
+          <div style={{ background: '#1e1e1e', padding: '25px', borderRadius: '10px', border: '1px solid #333', marginBottom: '35px' }}>
+            <h3 style={{ marginTop: 0, marginBottom: '20px', textAlign: 'center' }}>📝 สร้างรายการพัสดุใหม่ & พิมพ์ใบปะหน้า</h3>
+            <form onSubmit={handleSaveAndPrint}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '15px', marginBottom: '15px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>Tracking ID (รันออโต้)</label>
+                  <input type="text" value={formData.trackingId} disabled style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#2a2a2a', color: '#888' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>ชื่อผู้รับ</label>
+                  <input type="text" placeholder="ชื่อผู้รับ" value={formData.recipient} onChange={e => setFormData({...formData, recipient: e.target.value})} required style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#2a2a2a', color: '#fff' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>อีเมลผู้รับ (สำหรับส่งแจ้งเตือน)</label>
+                  <input type="email" placeholder="example@gmail.com" value={formData.recipientEmail} onChange={e => setFormData({...formData, recipientEmail: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#2a2a2a', color: '#fff' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>เบอร์โทรศัพท์</label>
+                  <input type="text" placeholder="081234567" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#2a2a2a', color: '#fff' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>จังหวัดปลายทาง</label>
+                  <select value={selectedProvince} onChange={e => setSelectedProvince(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#2a2a2a', color: '#fff' }}>
+                    {THAI_PROVINCES.map(prov => <option key={prov} value={prov}>{prov}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>ที่อยู่รายละเอียด (บ้านเลขที่, ถนน, ตำบล, อำเภอ)</label>
+                <input type="text" placeholder="เช่น 99/9 ถ.สุขุมวิท" value={addressDetail} onChange={e => setAddressDetail(e.target.value)} required style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#2a2a2a', color: '#fff' }} />
+              </div>
+
+              <button type="submit" disabled={formLoading} style={{ width: '100%', padding: '12px', background: '#22c55e', color: '#fff', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px' }}>
+                {formLoading ? 'กำลังบันทึกและส่งเมล...' : '💾 บันทึกข้อมูล ส่งอีเมล และพิมพ์ใบปะหน้า'}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* ตารางแสดงรายการ */}
+        <div style={{ background: '#1e1e1e', padding: '20px', borderRadius: '10px', border: '1px solid #333' }}>
+          <h3 style={{ marginTop: 0, marginBottom: '20px' }}>📦 รายการพัสดุทั้งหมดในระบบ ({filteredParcels.length})</h3>
+          
+          <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
+            <input type="text" placeholder="🔍 ค้นหา Tracking, ผู้รับ, เบอร์โทร..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#2a2a2a', color: '#fff' }} />
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#2a2a2a', color: '#fff' }}>
+              <option value="ทั้งหมด">สถานะ: ทั้งหมด</option>
+              <option value="รับฝากชำระแล้ว">รับฝากชำระแล้ว</option>
+              <option value="กำลังจัดส่ง">กำลังจัดส่ง</option>
+            </select>
+          </div>
+
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #444', color: '#aaa', fontSize: '14px' }}>
+                <th style={{ padding: '10px' }}>Tracking ID</th>
+                <th style={{ padding: '10px' }}>ผู้รับ & เบอร์/อีเมล</th>
+                <th style={{ padding: '10px' }}>ปลายทาง</th>
+                <th style={{ padding: '10px' }}>สถานะ</th>
+                <th style={{ padding: '10px', textAlign: 'center' }}>จัดการ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredParcels.length === 0 ? (
+                <tr>
+                  <td colSpan="5" style={{ textAlign: 'center', padding: '30px', color: '#777' }}>ไม่พบรายการพัสดุ</td>
+                </tr>
+              ) : (
+                filteredParcels.map(item => (
+                  <tr key={item.id} style={{ borderBottom: '1px solid #2a2a2a', fontSize: '14px' }}>
+                    <td style={{ padding: '12px', fontWeight: 'bold', color: '#38bdf8' }}>{item.trackingId}</td>
+                    <td style={{ padding: '12px' }}>
+                      <div>{item.recipient}</div>
+                      <div style={{ fontSize: '12px', color: '#888' }}>{item.phone || '-'} | {item.recipientEmail || 'ไม่มีอีเมล'}</div>
+                    </td>
+                    <td style={{ padding: '12px' }}>{item.location}</td>
+                    <td style={{ padding: '12px' }}>
+                      <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '12px', background: item.status === 'กำลังจัดส่ง' ? '#0369a1' : '#334155' }}>
+                        {item.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px', textAlign: 'center' }}>
+                      <button onClick={() => printLabel(item)} style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}>🖨️ พิมพ์</button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
 }

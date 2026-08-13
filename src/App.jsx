@@ -243,7 +243,7 @@ export default function App() {
 
   if (!currentUser) {
     return (
-      <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vw', minWidth: '100%', minHeight: '100%', background: '#0b0f19', color: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif', margin: 0, padding: 0, overflow: 'auto' }}>
+      <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', minWidth: '100%', minHeight: '100%', background: '#0b0f19', color: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif', margin: 0, padding: 0, overflow: 'auto' }}>
         <div style={{ background: '#131b2e', padding: '40px', borderRadius: '16px', width: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', border: '1px solid #1e293b', textAlign: 'center' }}>
           
           <div style={{ display: 'inline-block', background: '#1e293b', color: '#38bdf8', padding: '6px 16px', borderRadius: '20px', fontSize: '13px', marginBottom: '20px', fontWeight: '500' }}>
@@ -280,7 +280,7 @@ export default function App() {
 
   if (showRoleSelector) {
     return (
-      <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vw', minWidth: '100%', minHeight: '100%', background: '#0b0f19', color: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif', margin: 0, padding: 0, overflow: 'auto' }}>
+      <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', minWidth: '100%', minHeight: '100%', background: '#0b0f19', color: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif', margin: 0, padding: 0, overflow: 'auto' }}>
         <div style={{ background: '#131b2e', padding: '30px', borderRadius: '16px', width: '350px', textAlign: 'center', border: '1px solid #1e293b' }}>
           <h2>เลือกบทบาทของคุณ</h2>
           <p style={{ color: '#aaa', fontSize: '14px', marginBottom: '20px' }}>กรุณาเลือกสิทธิ์การใช้งานระบบ</p>
@@ -386,7 +386,7 @@ export default function App() {
           
           <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
             <input type="text" placeholder="🔍 ค้นหา Tracking, ผู้รับ, เบอร์โทร..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff' }} />
-            <select value={statusFilter} onChange={e => setSearchTerm(e.target.value)} style={{ padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff' }} onChange={e => setStatusFilter(e.target.value)}>
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff' }}>
               <option value="ทั้งหมด">สถานะ: ทั้งหมด</option>
               <option value="รับฝากชำระแล้ว">รับฝากชำระแล้ว</option>
               <option value="กำลังจัดส่ง">กำลังจัดส่ง</option>

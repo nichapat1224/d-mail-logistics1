@@ -312,7 +312,13 @@ export default function App() {
     );
   }
 
-  const filteredParcels = parcels.filter(item => {
+  // กรองรายการพัสดุ: ถ้าเป็น Admin เห็นทั้งหมด, ถ้าเป็น User ให้เห็นเฉพาะพัสดุที่อีเมลผู้รับตรงกับอีเมลที่ล็อกอิน หรือเป็นคนสร้าง
+  const accessibleParcels = parcels.filter(item => {
+    if (userRole === 'Admin') return true;
+    return item.recipientEmail === currentUser.email || item.createdBy === currentUser.email;
+  });
+
+  const filteredParcels = accessibleParcels.filter(item => {
     const matchSearch = item.trackingId.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           item.recipient.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           (item.phone && item.phone.includes(searchTerm));
@@ -400,7 +406,7 @@ export default function App() {
         )}
 
         <div style={{ background: '#131b2e', padding: '20px', borderRadius: '10px', border: '1px solid #1e293b' }}>
-          <h3 style={{ marginTop: 0, marginBottom: '20px' }}>📦 รายการพัสดุทั้งหมดในระบบ ({filteredParcels.length})</h3>
+          <h3 style={{ marginTop: 0, marginBottom: '20px' }}>📦 รายการพัสดุของคุณ ({filteredParcels.length})</h3>
           
           <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
             <input type="text" placeholder="🔍 ค้นหา Tracking, ผู้รับ, เบอร์โทร..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff' }} />
@@ -424,7 +430,7 @@ export default function App() {
             <tbody>
               {filteredParcels.length === 0 ? (
                 <tr>
-                  <td colSpan="5" style={{ textAlign: 'center', padding: '30px', color: '#777' }}>ไม่พบรายการพัสดุ</td>
+                  <td colSpan="5" style={{ textAlign: 'center', padding: '30px', color: '#777' }}>ไม่พบรายการพัสดุของคุณ</td>
                 </tr>
               ) : (
                 filteredParcels.map(item => (

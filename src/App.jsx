@@ -312,7 +312,6 @@ export default function App() {
     );
   }
 
-  // กรองรายการพัสดุ: ถ้าเป็น Admin เห็นทั้งหมด, ถ้าเป็น User ให้เห็นเฉพาะพัสดุที่อีเมลผู้รับตรงกับอีเมลที่ล็อกอิน หรือเป็นคนสร้าง
   const accessibleParcels = parcels.filter(item => {
     if (userRole === 'Admin') return true;
     return item.recipientEmail === currentUser.email || item.createdBy === currentUser.email;
@@ -424,13 +423,13 @@ export default function App() {
                 <th style={{ padding: '10px' }}>ผู้รับ & เบอร์/อีเมล</th>
                 <th style={{ padding: '10px' }}>ปลายทาง</th>
                 <th style={{ padding: '10px' }}>สถานะ</th>
-                <th style={{ padding: '10px', textAlign: 'center' }}>จัดการ</th>
+                {userRole === 'Admin' && <th style={{ padding: '10px', textAlign: 'center' }}>จัดการ</th>}
               </tr>
             </thead>
             <tbody>
               {filteredParcels.length === 0 ? (
                 <tr>
-                  <td colSpan="5" style={{ textAlign: 'center', padding: '30px', color: '#777' }}>ไม่พบรายการพัสดุของคุณ</td>
+                  <td colSpan={userRole === 'Admin' ? "5" : "4"} style={{ textAlign: 'center', padding: '30px', color: '#777' }}>ไม่พบรายการพัสดุของคุณ</td>
                 </tr>
               ) : (
                 filteredParcels.map(item => (
@@ -446,15 +445,14 @@ export default function App() {
                         {item.status}
                       </span>
                     </td>
-                    <td style={{ padding: '12px', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
-                        <button onClick={() => printLabel(item)} style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}>🖨️ พิมพ์</button>
-                        
-                        {userRole === 'Admin' && (
+                    {userRole === 'Admin' && (
+                      <td style={{ padding: '12px', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                          <button onClick={() => printLabel(item)} style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}>🖨️ พิมพ์</button>
                           <button onClick={() => handleDeleteParcel(item.id)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}>🗑️ ลบ</button>
-                        )}
-                      </div>
-                    </td>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}

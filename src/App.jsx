@@ -7,7 +7,7 @@ import {
   doc, getDoc, setDoc, onSnapshot, query, orderBy, serverTimestamp 
 } from 'firebase/firestore';
 import { 
-  getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged 
+  getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged 
 } from 'firebase/auth';
 
 const firebaseConfig = {
@@ -48,6 +48,7 @@ export default function App() {
   const [userRole, setUserRole] = useState(null); 
   const [authLoading, setAuthLoading] = useState(true);
   const [showRoleSelector, setShowRoleSelector] = useState(false);
+  const [isRegisterMode, setIsRegisterMode] = useState(false); // ควบคุมโหมด Login / Register
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
@@ -117,9 +118,21 @@ export default function App() {
     e.preventDefault();
     setAuthError('');
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      if (isRegisterMode) {
+        // สมัครสมาชิกใหม่ (ค่าเริ่มต้นให้เป็น User ทั่วไป)
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await setDoc(doc(db, "users", userCredential.user.uid), { role: 'User', email: email });
+        showToast('ลงทะเบียนสำเร็จ!');
+      } else {
+        // เข้าสู่ระบบ
+        await signInWithEmailAndPassword(auth, email, password);
+      }
     } catch (err) { 
-      setAuthError('อีเมลหรือรหัสผ่านไม่ถูกต้อง'); 
+      if (isRegisterMode) {
+        setAuthError('ไม่สามารถลงทะเบียนได้ (อีเมลอาจถูกใช้งานแล้ว หรือรหัสผ่านสั้นเกินไป)');
+      } else {
+        setAuthError('อีเมลหรือรหัสผ่านไม่ถูกต้อง'); 
+      }
     }
   };
 
@@ -253,7 +266,9 @@ export default function App() {
           <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 8px 0', letterSpacing: '0.5px', color: '#ffffff' }}>
             D-MAIL <span style={{ color: '#38bdf8' }}>LOGISTICS</span>
           </h1>
-          <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '30px' }}>กรุณาเข้าสู่ระบบเพื่อเข้าใช้งานแผงบอร์ด</p>
+          <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '30px' }}>
+            {isRegisterMode ? 'สร้างบัญชีผู้ใช้งานใหม่' : 'กรุณาเข้าสู่ระบบเพื่อเข้าใช้งานแผงบอร์ด'}
+          </p>
 
           {authError && <div style={{ color: '#ef4444', marginBottom: '15px', fontSize: '13px' }}>{authError}</div>}
           
@@ -269,9 +284,18 @@ export default function App() {
             </div>
 
             <button type="submit" style={{ width: '100%', padding: '12px', background: '#06b6d4', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px', boxShadow: '0 4px 12px rgba(6,182,212,0.3)' }}>
-              เข้าสู่ระบบ
+              {isRegisterMode ? 'ลงทะเบียน' : 'เข้าสู่ระบบ'}
             </button>
           </form>
+
+          {/* ส่วนสลับระหว่างหน้า Login และ Register ไว้ด้านล่าง */}
+          <div style={{ marginTop: '20px', fontSize: '13px', color: '#94a3b8' }}>
+            {isRegisterMode ? (
+              <span>มีบัญชีอยู่แล้ว? <button onClick={() => { setIsRegisterMode(false); setAuthError(''); }} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontWeight: 'bold', padding: 0 }}>เข้าสู่ระบบที่นี่</button></span>
+            ) : (
+              <span>ยังไม่มีบัญชีใช่ไหม? <button onClick={() => { setIsRegisterMode(true); setAuthError(''); }} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontWeight: 'bold', padding: 0 }}>ลงทะเบียนผู้ใช้ใหม่</button></span>
+            )}
+          </div>
 
         </div>
       </div>

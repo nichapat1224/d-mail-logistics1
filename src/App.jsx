@@ -48,7 +48,7 @@ export default function App() {
   const [userRole, setUserRole] = useState(null); 
   const [authLoading, setAuthLoading] = useState(true);
   const [showRoleSelector, setShowRoleSelector] = useState(false);
-  const [isRegisterMode, setIsRegisterMode] = useState(false); // ควบคุมโหมด Login / Register
+  const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
@@ -119,12 +119,10 @@ export default function App() {
     setAuthError('');
     try {
       if (isRegisterMode) {
-        // สมัครสมาชิกใหม่ (ค่าเริ่มต้นให้เป็น User ทั่วไป)
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         await setDoc(doc(db, "users", userCredential.user.uid), { role: 'User', email: email });
         showToast('ลงทะเบียนสำเร็จ!');
       } else {
-        // เข้าสู่ระบบ
         await signInWithEmailAndPassword(auth, email, password);
       }
     } catch (err) { 
@@ -263,7 +261,7 @@ export default function App() {
             ● ระบบจัดการและติดตามพัสดุ
           </div>
 
-          <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 8px 0', letterSpacing: '0.5px', color: '#ffffff' }}>
+          <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 8px 0', letterSpacing: '0.5px', color: '#38bdf8' }}>
             D-MAIL <span style={{ color: '#38bdf8' }}>LOGISTICS</span>
           </h1>
           <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '30px' }}>
@@ -288,7 +286,6 @@ export default function App() {
             </button>
           </form>
 
-          {/* ส่วนสลับระหว่างหน้า Login และ Register ไว้ด้านล่าง */}
           <div style={{ marginTop: '20px', fontSize: '13px', color: '#94a3b8' }}>
             {isRegisterMode ? (
               <span>มีบัญชีอยู่แล้ว? <button onClick={() => { setIsRegisterMode(false); setAuthError(''); }} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontWeight: 'bold', padding: 0 }}>เข้าสู่ระบบที่นี่</button></span>
@@ -333,7 +330,7 @@ export default function App() {
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 40px', background: '#131b2e', borderBottom: '1px solid #1e293b' }}>
-        <h2 style={{ margin: 0, letterSpacing: '1px' }}>D-MAIL <span style={{ color: '#38bdf8' }}>LOGISTICS</span></h2>
+        <h2 style={{ margin: 0, letterSpacing: '1px', color: '#38bdf8' }}>D-MAIL <span style={{ color: '#38bdf8' }}>LOGISTICS</span></h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <span style={{ background: userRole === 'Admin' ? '#0284c7' : '#475569', padding: '5px 12px', borderRadius: '15px', fontSize: '13px' }}>
             {userRole === 'Admin' ? 'Admin (ผู้ดูแลระบบ)' : 'User (ผู้ใช้งาน)'}
@@ -344,7 +341,6 @@ export default function App() {
 
       <div style={{ padding: '30px 40px', maxWidth: '1200px', margin: '0 auto' }}>
         
-        {/* แสดงแดชบอร์ดเฉพาะ Admin เท่านั้น */}
         {userRole === 'Admin' && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '30px' }}>
             <div style={{ background: '#131b2e', padding: '20px', borderRadius: '10px', textAlign: 'center', border: '1px solid #1e293b' }}>
@@ -362,7 +358,6 @@ export default function App() {
           </div>
         )}
 
-        {/* ฟอร์มเพิ่มพัสดุสำหรับ Admin เท่านั้น */}
         {userRole === 'Admin' && (
           <div style={{ background: '#131b2e', padding: '25px', borderRadius: '10px', border: '1px solid #1e293b', marginBottom: '35px' }}>
             <h3 style={{ marginTop: 0, marginBottom: '20px', textAlign: 'center' }}>📝 สร้างรายการพัสดุใหม่ & พิมพ์ใบปะหน้า</h3>
@@ -404,7 +399,6 @@ export default function App() {
           </div>
         )}
 
-        {/* ตารางแสดงรายการ */}
         <div style={{ background: '#131b2e', padding: '20px', borderRadius: '10px', border: '1px solid #1e293b' }}>
           <h3 style={{ marginTop: 0, marginBottom: '20px' }}>📦 รายการพัสดุทั้งหมดในระบบ ({filteredParcels.length})</h3>
           
@@ -450,7 +444,6 @@ export default function App() {
                       <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
                         <button onClick={() => printLabel(item)} style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}>🖨️ พิมพ์</button>
                         
-                        {/* ปุ่มลบแสดงเฉพาะ Admin เท่านั้น */}
                         {userRole === 'Admin' && (
                           <button onClick={() => handleDeleteParcel(item.id)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}>🗑️ ลบ</button>
                         )}

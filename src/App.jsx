@@ -7,8 +7,7 @@ import {
   doc, getDoc, setDoc, onSnapshot, query, orderBy, serverTimestamp 
 } from 'firebase/firestore';
 import { 
-  getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, 
-  signOut, onAuthStateChanged 
+  getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged 
 } from 'firebase/auth';
 
 const firebaseConfig = {
@@ -48,11 +47,9 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState(null); 
   const [authLoading, setAuthLoading] = useState(true);
-  const [isRegistering, setIsRegistering] = useState(false);
   const [showRoleSelector, setShowRoleSelector] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [authError, setAuthError] = useState('');
   const [parcels, setParcels] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -70,7 +67,6 @@ export default function App() {
   });
   const [formLoading, setFormLoading] = useState(false);
 
-  // โหลด EmailJS script แบบปลอดภัยจาก CDN เข้ามาในตัวแอปอัตโนมัติ
   useEffect(() => {
     const script = document.createElement('script');
     script.src = "https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js";
@@ -121,14 +117,9 @@ export default function App() {
     e.preventDefault();
     setAuthError('');
     try {
-      if (isRegistering) {
-        if (password !== confirmPassword) throw new Error('รหัสผ่านไม่ตรงกัน');
-        await createUserWithEmailAndPassword(auth, email, password);
-      } else {
-        await signInWithEmailAndPassword(auth, email, password);
-      }
+      await signInWithEmailAndPassword(auth, email, password);
     } catch (err) { 
-      setAuthError(err.message); 
+      setAuthError('อีเมลหรือรหัสผ่านไม่ถูกต้อง'); 
     }
   };
 
@@ -207,7 +198,6 @@ export default function App() {
       const docRef = await addDoc(collection(db, "parcels"), newParcelData);
       const dataForPrint = { ...newParcelData, id: docRef.id };
        
-      // ส่งอีเมลผ่าน window.emailjs ที่โหลดมาจาก CDN
       if (formData.recipientEmail && window.emailjs) {
         const emailParams = {
           tracking_id: formData.trackingId,
@@ -231,49 +221,68 @@ export default function App() {
     setFormLoading(false);
   };
 
+  const handleDeleteParcel = async (id) => {
+    if (userRole !== 'Admin') return;
+    if (window.confirm('คุณต้องการลบรายการพัสดุนี้ใช่หรือไม่?')) {
+      try {
+        await deleteDoc(doc(db, "parcels", id));
+        showToast('ลบรายการพัสดุสำเร็จ');
+      } catch (err) {
+        showToast('เกิดข้อผิดพลาดในการลบ');
+      }
+    }
+  };
+
   if (authLoading) {
     return <div style={{ textAlign: 'center', marginTop: '50px', color: '#fff', background: '#111', height: '100vh', paddingTop: '50px' }}>กำลังโหลดระบบ...</div>;
   }
 
+  // หน้า Login ดีไซน์ตามรูปที่ 2
   if (!currentUser) {
     return (
-      <div style={{ background: '#111', minHeight: '100vh', color: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif' }}>
-        <form onSubmit={handleAuthSubmit} style={{ background: '#1e1e1e', padding: '30px', borderRadius: '10px', width: '350px' }}>
-          <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>D-MAIL LOGISTICS</h2>
-          {authError && <div style={{ color: '#ef4444', marginBottom: '15px', fontSize: '14px' }}>{authError}</div>}
-          <div style={{ marginBottom: '15px' }}>
-            <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>อีเมล</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} required style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#2a2a2a', color: '#fff' }} />
+      <div style={{ background: '#0b0f19', minHeight: '100vh', color: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif' }}>
+        <div style={{ background: '#131b2e', padding: '40px', borderRadius: '16px', width: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', border: '1px solid #1e293b', textAlign: 'center' }}>
+          
+          <div style={{ display: 'inline-block', background: '#1e293b', color: '#38bdf8', padding: '6px 16px', borderRadius: '20px', fontSize: '13px', marginBottom: '20px', fontWeight: '500' }}>
+            ● ระบบจัดการและติดตามพัสดุ
           </div>
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>รหัสผ่าน</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} required style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#2a2a2a', color: '#fff' }} />
-          </div>
-          {isRegistering && (
+
+          <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 8px 0', letterSpacing: '0.5px' }}>
+            D-MAIL <span style={{ color: '#38bdf8' }}>LOGISTICS</span>
+          </h1>
+          <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '30px' }}>กรุณาเข้าสู่ระบบเพื่อเข้าใช้งานแผงบอร์ด</p>
+
+          {authError && <div style={{ color: '#ef4444', marginBottom: '15px', fontSize: '13px' }}>{authError}</div>}
+          
+          <form onSubmit={handleAuthSubmit} style={{ textAlign: 'left' }}>
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>ยืนยันรหัสผ่าน</label>
-              <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#2a2a2a', color: '#fff' }} />
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: '#cbd5e1' }}>อีเมลผู้ใช้งาน</label>
+              <input type="email" placeholder="admin@gmail.com" value={email} onChange={e => setEmail(e.target.value)} required style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
             </div>
-          )}
-          <button type="submit" style={{ width: '100%', padding: '10px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '10px' }}>
-            {isRegistering ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}
-          </button>
-          <div style={{ textAlign: 'center', fontSize: '14px', cursor: 'pointer', color: '#38bdf8' }} onClick={() => setIsRegistering(!isRegistering)}>
-            {isRegistering ? 'มีบัญชีอยู่แล้ว? เข้าสู่ระบบ' : 'ยังไม่มีบัญชี? สมัครสมาชิก'}
-          </div>
-        </form>
+            
+            <div style={{ marginBottom: '25px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: '#cbd5e1' }}>รหัสผ่าน</label>
+              <input type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
+            </div>
+
+            <button type="submit" style={{ width: '100%', padding: '12px', background: '#06b6d4', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px', boxShadow: '0 4px 12px rgba(6,182,212,0.3)' }}>
+              เข้าสู่ระบบ
+            </button>
+          </form>
+
+        </div>
       </div>
     );
   }
 
   if (showRoleSelector) {
     return (
-      <div style={{ background: '#111', minHeight: '100vh', color: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif' }}>
-        <div style={{ background: '#1e1e1e', padding: '30px', borderRadius: '10px', width: '350px', textAlign: 'center' }}>
+      <div style={{ background: '#0b0f19', minHeight: '100vh', color: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif' }}>
+        <div style={{ background: '#131b2e', padding: '30px', borderRadius: '16px', width: '350px', textAlign: 'center', border: '1px solid #1e293b' }}>
           <h2>เลือกบทบาทของคุณ</h2>
           <p style={{ color: '#aaa', fontSize: '14px', marginBottom: '20px' }}>กรุณาเลือกสิทธิ์การใช้งานระบบ</p>
-          <button onClick={() => selectRole('Admin')} style={{ width: '100%', padding: '12px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '10px' }}>Admin (ผู้ดูแลระบบ)</button>
-          <button onClick={() => selectRole('User')} style={{ width: '100%', padding: '12px', background: '#475569', color: '#fff', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>User (ผู้ใช้งานทั่วไป)</button>
+          <button onClick={() => selectRole('Admin')} style={{ width: '100%', padding: '12px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '10px' }}>Admin (ผู้ดูแลระบบ)</button>
+          <button onClick={() => selectRole('User')} style={{ width: '100%', padding: '12px', background: '#475569', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>User (ผู้ใช้งานทั่วไป)</button>
         </div>
       </div>
     );
@@ -323,7 +332,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* ฟอร์มเพิ่มพัสดุสำหรับ Admin */}
+        {/* ฟอร์มเพิ่มพัสดุสำหรับ Admin เท่านั้น */}
         {userRole === 'Admin' && (
           <div style={{ background: '#1e1e1e', padding: '25px', borderRadius: '10px', border: '1px solid #333', marginBottom: '35px' }}>
             <h3 style={{ marginTop: 0, marginBottom: '20px', textAlign: 'center' }}>📝 สร้างรายการพัสดุใหม่ & พิมพ์ใบปะหน้า</h3>
@@ -331,23 +340,23 @@ export default function App() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '15px', marginBottom: '15px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>Tracking ID (รันออโต้)</label>
-                  <input type="text" value={formData.trackingId} disabled style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#2a2a2a', color: '#888' }} />
+                  <input type="text" value={formData.trackingId} disabled style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#2a2a2a', color: '#888', boxSizing: 'border-box' }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>ชื่อผู้รับ</label>
-                  <input type="text" placeholder="ชื่อผู้รับ" value={formData.recipient} onChange={e => setFormData({...formData, recipient: e.target.value})} required style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#2a2a2a', color: '#fff' }} />
+                  <input type="text" placeholder="ชื่อผู้รับ" value={formData.recipient} onChange={e => setFormData({...formData, recipient: e.target.value})} required style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#2a2a2a', color: '#fff', boxSizing: 'border-box' }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>อีเมลผู้รับ (สำหรับส่งแจ้งเตือน)</label>
-                  <input type="email" placeholder="example@gmail.com" value={formData.recipientEmail} onChange={e => setFormData({...formData, recipientEmail: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#2a2a2a', color: '#fff' }} />
+                  <input type="email" placeholder="example@gmail.com" value={formData.recipientEmail} onChange={e => setFormData({...formData, recipientEmail: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#2a2a2a', color: '#fff', boxSizing: 'border-box' }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>เบอร์โทรศัพท์</label>
-                  <input type="text" placeholder="081234567" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#2a2a2a', color: '#fff' }} />
+                  <input type="text" placeholder="081234567" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#2a2a2a', color: '#fff', boxSizing: 'border-box' }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>จังหวัดปลายทาง</label>
-                  <select value={selectedProvince} onChange={e => setSelectedProvince(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#2a2a2a', color: '#fff' }}>
+                  <select value={selectedProvince} onChange={e => setSelectedProvince(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#2a2a2a', color: '#fff', boxSizing: 'border-box' }}>
                     {THAI_PROVINCES.map(prov => <option key={prov} value={prov}>{prov}</option>)}
                   </select>
                 </div>
@@ -355,7 +364,7 @@ export default function App() {
 
               <div style={{ marginBottom: '15px' }}>
                 <label style={{ display: 'block', fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>ที่อยู่รายละเอียด (บ้านเลขที่, ถนน, ตำบล, อำเภอ)</label>
-                <input type="text" placeholder="เช่น 99/9 ถ.สุขุมวิท" value={addressDetail} onChange={e => setAddressDetail(e.target.value)} required style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#2a2a2a', color: '#fff' }} />
+                <input type="text" placeholder="เช่น 99/9 ถ.สุขุมวิท" value={addressDetail} onChange={e => setAddressDetail(e.target.value)} required style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#2a2a2a', color: '#fff', boxSizing: 'border-box' }} />
               </div>
 
               <button type="submit" disabled={formLoading} style={{ width: '100%', padding: '12px', background: '#22c55e', color: '#fff', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px' }}>
@@ -408,7 +417,14 @@ export default function App() {
                       </span>
                     </td>
                     <td style={{ padding: '12px', textAlign: 'center' }}>
-                      <button onClick={() => printLabel(item)} style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}>🖨️ พิมพ์</button>
+                      <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                        <button onClick={() => printLabel(item)} style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}>🖨️ พิมพ์</button>
+                        
+                        {/* ปุ่มลบจะแสดงเฉพาะ Admin เท่านั้น */}
+                        {userRole === 'Admin' && (
+                          <button onClick={() => handleDeleteParcel(item.id)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}>🗑️ ลบ</button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))

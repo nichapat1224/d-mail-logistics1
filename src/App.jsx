@@ -237,7 +237,7 @@ export default function App() {
     return <div style={{ textAlign: 'center', marginTop: '50px', color: '#fff', background: '#111', height: '100vh', paddingTop: '50px' }}>กำลังโหลดระบบ...</div>;
   }
 
-  // หน้า Login ดีไซน์ตามรูปที่ 2
+  // หน้า Login ปรับสี D-MAIL เป็นสีขาวเรียบร้อยแล้ว
   if (!currentUser) {
     return (
       <div style={{ background: '#0b0f19', minHeight: '100vh', color: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif' }}>
@@ -247,7 +247,7 @@ export default function App() {
             ● ระบบจัดการและติดตามพัสดุ
           </div>
 
-          <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 8px 0', letterSpacing: '0.5px' }}>
+          <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 8px 0', letterSpacing: '0.5px', color: '#ffffff' }}>
             D-MAIL <span style={{ color: '#38bdf8' }}>LOGISTICS</span>
           </h1>
           <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '30px' }}>กรุณาเข้าสู่ระบบเพื่อเข้าใช้งานแผงบอร์ด</p>

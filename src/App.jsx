@@ -7,7 +7,7 @@ import {
   doc, getDoc, setDoc, onSnapshot, query, orderBy, serverTimestamp 
 } from 'firebase/firestore';
 import { 
-  getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged 
+  getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged 
 } from 'firebase/auth';
 
 const firebaseConfig = {
@@ -44,16 +44,18 @@ export default function App() {
   const [userRole, setUserRole] = useState(null); 
   const [authLoading, setAuthLoading] = useState(true);
   const [showRoleSelector, setShowRoleSelector] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false); // สลับหน้า เข้าสู่ระบบ / สมัครสมาชิก
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
+  
   const [parcels, setParcels] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ทั้งหมด');
   const [toast, setToast] = useState('');
   
   // ฟอร์มรับเข้าคลัง / กระจายสินค้า
-  const [selectedProvince, setSelectedProvince] = useState('กรุงเทพมหานคร');
   const [formData, setFormData] = useState({ 
     trackingId: generateTrackingId(), 
     productName: '',
@@ -108,9 +110,14 @@ export default function App() {
     e.preventDefault();
     setAuthError('');
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      if (isRegistering) {
+        await createUserWithEmailAndPassword(auth, email, password);
+        showToast('สมัครสมาชิกสำเร็จ!');
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
     } catch (err) { 
-      setAuthError('อีเมลหรือรหัสผ่านไม่ถูกต้อง'); 
+      setAuthError(isRegistering ? 'ไม่สามารถสมัครสมาชิกได้ (อีเมลอาจซ้ำหรือรหัสผ่านสั้นเกินไป)' : 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'); 
     }
   };
 
@@ -246,7 +253,9 @@ export default function App() {
           <h1 style={{ fontSize: '22px', fontWeight: 'bold', margin: '0 0 8px 0', color: '#ffffff' }}>
             CENTRAL <span style={{ color: '#38bdf8' }}>WAREHOUSE</span>
           </h1>
-          <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '25px' }}>กรุณาเข้าสู่ระบบเพื่อจัดการพัสดุ</p>
+          <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '25px' }}>
+            {isRegistering ? 'กรอกข้อมูลเพื่อสมัครสมาชิกใหม่' : 'กรุณาเข้าสู่ระบบเพื่อจัดการพัสดุ'}
+          </p>
 
           {authError && <div style={{ color: '#ef4444', marginBottom: '15px', fontSize: '13px' }}>{authError}</div>}
           
@@ -259,10 +268,20 @@ export default function App() {
               <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: '#cbd5e1' }}>รหัสผ่าน</label>
               <input type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
             </div>
-            <button type="submit" style={{ width: '100%', padding: '12px', background: '#06b6d4', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px' }}>
-              เข้าสู่ระบบ
+            <button type="submit" style={{ width: '100%', padding: '12px', background: isRegistering ? '#22c55e' : '#06b6d4', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px' }}>
+              {isRegistering ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}
             </button>
           </form>
+
+          {/* ปุ่มสลับโหมด ลงทะเบียน / เข้าสู่ระบบ ด้านล่าง */}
+          <div style={{ marginTop: '20px', fontSize: '13px', color: '#94a3b8' }}>
+            {isRegistering ? (
+              <span>มีบัญชีอยู่แล้ว? <button onClick={() => setIsRegistering(false)} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontWeight: 'bold', padding: 0, fontSize: '13px' }}>เข้าสู่ระบบที่นี่</button></span>
+            ) : (
+              <span>ยังไม่มีบัญชีผู้ใช้งาน? <button onClick={() => setIsRegistering(true)} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontWeight: 'bold', padding: 0, fontSize: '13px' }}>สมัครสมาชิก</button></span>
+            )}
+          </div>
+
         </div>
       </div>
     );
@@ -398,7 +417,7 @@ export default function App() {
           
           <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
             <input type="text" placeholder="🔍 ค้นหา Tracking, สินค้า, ผู้รับ, จังหวัด..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff' }} />
-            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff' }}>
+            <select value={statusFilter} onChange={e => setSearchTerm(e.target.value) /* แก้ฟิลเตอร์สถานะ */} style={{ padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff' }} onChange={e => setStatusFilter(e.target.value)}>
               <option value="ทั้งหมด">สถานะ: ทั้งหมด</option>
               <option value="รับเข้าคลังหลัก (สโตร์)">รับเข้าคลังหลัก (สโตร์)</option>
               <option value="กำลังกระจายส่ง">กำลังกระจายส่ง</option>

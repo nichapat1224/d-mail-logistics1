@@ -252,7 +252,7 @@ export default function App() {
             ● ระบบคลังสินค้า (Admin & Staff)
           </div>
           <h1 style={{ fontSize: '22px', fontWeight: 'bold', margin: '0 0 8px 0', color: '#ffffff' }}>
-            CENTRAL <span style={{ color: '#38bdf8' }}>WAREHOUSE</span>
+            <span style={{ color: '#ffffff' }}>CENTRAL</span> <span style={{ color: '#38bdf8' }}>WAREHOUSE</span>
           </h1>
           <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '25px' }}>
             {isRegistering ? 'กรอกข้อมูลเพื่อสมัครสมาชิกใหม่' : 'กรุณาเข้าสู่ระบบเพื่อจัดการคลังสินค้า'}
@@ -319,7 +319,9 @@ export default function App() {
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 40px', background: '#131b2e', borderBottom: '1px solid #1e293b' }}>
-        <h2 style={{ margin: 0, letterSpacing: '1px', color: '#ffffff' }}>CENTRAL <span style={{ color: '#38bdf8' }}>WAREHOUSE</span></h2>
+        <h2 style={{ margin: 0, letterSpacing: '1px', color: '#ffffff' }}>
+          <span style={{ color: '#ffffff' }}>CENTRAL</span> <span style={{ color: '#38bdf8' }}>WAREHOUSE</span>
+        </h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <span style={{ 
             background: userRole === 'Admin' ? '#0284c7' : '#059669', 

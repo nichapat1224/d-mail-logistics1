@@ -7,7 +7,7 @@ import {
   doc, getDoc, setDoc, onSnapshot, query, orderBy, serverTimestamp 
 } from 'firebase/firestore';
 import { 
-  getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged 
+  getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged 
 } from 'firebase/auth';
 
 const firebaseConfig = {
@@ -25,10 +25,6 @@ const analytics = getAnalytics(app);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-const EMAILJS_SERVICE_ID = "service_a1qkxop";
-const EMAILJS_TEMPLATE_ID = "template_okn7sbt";
-const EMAILJS_PUBLIC_KEY = "vY-ZC8b43U-idsLpR";
-
 const THAI_PROVINCES = [
   "กรุงเทพมหานคร", "กระบี่", "กาญจนบุรี", "กาฬสินธุ์", "กำแพงเพชร", "ขอนแก่น", "จันทบุรี", "ฉะเชิงเทรา", 
   "ชลบุรี", "ชัยนาท", "ชัยภูมิ", "ชุมพร", "เชียงราย", "เชียงใหม่", "ตรัง", "ตราด", "ตาก", "นครนายก", 
@@ -41,14 +37,13 @@ const THAI_PROVINCES = [
   "สุรินทร์", "หนองคาย", "หนองบัวลำภู", "อ่างทอง", "อำนาจเจริญ", "อุดรธานี", "อุตรดิตถ์", "อุทัยธานี", "อุบลราชธานี"
 ];
 
-const generateTrackingId = () => 'DM' + Math.floor(10000000 + Math.random() * 90000000) + 'TH';
+const generateTrackingId = () => 'WH' + Math.floor(10000000 + Math.random() * 90000000) + 'TH';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState(null); 
   const [authLoading, setAuthLoading] = useState(true);
   const [showRoleSelector, setShowRoleSelector] = useState(false);
-  const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
@@ -56,24 +51,20 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ทั้งหมด');
   const [toast, setToast] = useState('');
-  const [selectedProvince, setSelectedProvince] = useState('กรุงเทพมหานคร');
-  const [addressDetail, setAddressDetail] = useState('');
   
+  // ฟอร์มรับเข้าคลัง / กระจายสินค้า
+  const [selectedProvince, setSelectedProvince] = useState('กรุงเทพมหานคร');
   const [formData, setFormData] = useState({ 
     trackingId: generateTrackingId(), 
+    productName: '',
+    quantity: 1,
     recipient: '', 
-    recipientEmail: '', 
     phone: '', 
-    status: 'รับฝากชำระแล้ว' 
+    destinationProvince: 'กรุงเทพมหานคร',
+    addressDetail: '',
+    status: 'รับเข้าคลังหลัก (สโตร์)' 
   });
   const [formLoading, setFormLoading] = useState(false);
-
-  useEffect(() => {
-    const script = document.createElement('script');
-    script.src = "https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js";
-    script.async = true;
-    document.body.appendChild(script);
-  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -99,12 +90,11 @@ export default function App() {
 
   useEffect(() => {
     if (!currentUser) return;
-    const q = query(collection(db, "parcels"), orderBy("createdAt", "desc"));
+    const q = query(collection(db, "warehouse_parcels"), orderBy("createdAt", "desc"));
     return onSnapshot(q, (snapshot) => {
       setParcels(snapshot.docs.map(docSnap => ({ 
         id: docSnap.id, 
-        ...docSnap.data(), 
-        parsedDate: docSnap.data().createdAt?.toDate() || new Date() 
+        ...docSnap.data() 
       })));
     });
   }, [currentUser]);
@@ -118,19 +108,9 @@ export default function App() {
     e.preventDefault();
     setAuthError('');
     try {
-      if (isRegisterMode) {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        await setDoc(doc(db, "users", userCredential.user.uid), { role: 'User', email: email });
-        showToast('ลงทะเบียนสำเร็จ!');
-      } else {
-        await signInWithEmailAndPassword(auth, email, password);
-      }
+      await signInWithEmailAndPassword(auth, email, password);
     } catch (err) { 
-      if (isRegisterMode) {
-        setAuthError('ไม่สามารถลงทะเบียนได้ (อีเมลอาจถูกใช้งานแล้ว หรือรหัสผ่านสั้นเกินไป)');
-      } else {
-        setAuthError('อีเมลหรือรหัสผ่านไม่ถูกต้อง'); 
-      }
+      setAuthError('อีเมลหรือรหัสผ่านไม่ถูกต้อง'); 
     }
   };
 
@@ -140,103 +120,107 @@ export default function App() {
       await setDoc(doc(db, "users", currentUser.uid), { role, email: currentUser.email }, { merge: true });
       setUserRole(role);
       setShowRoleSelector(false);
-      showToast(`บันทึกสิทธิ์เป็น ${role} สำเร็จ`);
+      showToast(`กำหนดสิทธิ์เป็น ${role} สำเร็จ`);
     } catch (err) {
       setAuthError(err.message);
     }
   };
 
   const printLabel = (item) => {
-    const printWindow = window.open('', '_blank', 'width=500,height=600');
+    const printWindow = window.open('', '_blank', 'width=500,height=650');
     const svgNode = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     if (typeof JsBarcode === 'function') {
-      JsBarcode(svgNode, item.trackingId, { format: "CODE128", width: 2, height: 45, displayValue: true });
+      JsBarcode(svgNode, item.trackingId, { format: "CODE128", width: 2, height: 40, displayValue: true });
     }
      
-    const qrData = `Tracking: ${item.trackingId} | ผู้รับ: ${item.recipient} | ปลายทาง: ${item.location} | สถานะ: ${item.status}`;
-    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(qrData)}`;
+    const trackingUrl = `https://d-mail-logistics.firebaseapp.com/?track=${item.trackingId}`;
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodeURIComponent(trackingUrl)}`;
 
     printWindow.document.write(`
       <html>
         <head>
-          <title>Print Label - ${item.trackingId}</title>
+          <title>Warehouse Label - ${item.trackingId}</title>
           <style>
-            body { font-family: sans-serif; text-align: center; padding: 20px; color: #000; }
-            .label { border: 2px dashed #000; padding: 20px; width: 280px; margin: auto; text-align: left; background: #fff; }
-            .barcode { text-align: center; margin-bottom: 10px; }
+            body { font-family: sans-serif; text-align: center; padding: 15px; color: #000; }
+            .label { border: 2px solid #000; padding: 15px; width: 300px; margin: auto; text-align: left; background: #fff; }
+            .barcode { text-align: center; margin-bottom: 8px; }
             .barcode svg { width: 100%; height: auto; }
-            button { margin-top: 20px; padding: 10px 20px; cursor: pointer; background: #0284c7; color: #fff; border: none; border-radius: 4px; font-size: 16px; }
+            button { margin-top: 15px; padding: 10px 20px; cursor: pointer; background: #0284c7; color: #fff; border: none; border-radius: 4px; font-size: 15px; }
           </style>
         </head>
         <body>
           <div class="label">
-            <h3 style="text-align:center; margin:0 0 10px 0;">D-MAIL LOGISTICS</h3>
+            <h3 style="text-align:center; margin:0 0 8px 0;">CENTRAL WAREHOUSE SYSTEM</h3>
             <div class="barcode">${svgNode.outerHTML}</div>
-            <p><strong>Tracking:</strong> ${item.trackingId}</p>
-            <p><strong>ผู้รับ:</strong> ${item.recipient}</p>
-            <p><strong>เบอร์โทร:</strong> ${item.phone || '-'}</p>
-            <p><strong>อีเมล:</strong> ${item.recipientEmail || '-'}</p>
-            <p><strong>ปลายทาง:</strong> ${item.location}</p>
-            <p><strong>สถานะ:</strong> ${item.status}</p>
-            <div style="text-align:center; margin-top:12px;">
-              <img src="${qrCodeUrl}" width="90" alt="QR Code" />
-              <div style="font-size: 10px; color: #555; margin-top: 4px;">สแกนเพื่อตรวจสอบข้อมูล</div>
+            <p style="margin:4px 0;"><strong>Tracking:</strong> ${item.trackingId}</p>
+            <p style="margin:4px 0;"><strong>สินค้า:</strong> ${item.productName} (จำนวน: ${item.quantity})</p>
+            <p style="margin:4px 0;"><strong>ผู้รับ:</strong> ${item.recipient} (${item.phone || '-'})</p>
+            <p style="margin:4px 0;"><strong>ปลายทาง:</strong> ${item.addressDetail} จ.${item.destinationProvince}</p>
+            <p style="margin:4px 0;"><strong>สถานะ:</strong> ${item.status}</p>
+            <div style="text-align:center; margin-top:10px;">
+              <img src="${qrCodeUrl}" width="85" alt="QR Code" />
+              <div style="font-size: 9px; color: #333; margin-top: 2px;">สแกนเพื่อเช็คสถานะพัสดุ</div>
             </div>
           </div>
-          <button onclick="window.print()">🖨️ สั่งพิมพ์ใบนี้</button>
+          <button onclick="window.print()">🖨️ สั่งพิมพ์ใบปะหน้า</button>
         </body>
       </html>
     `);
     printWindow.document.close();
   };
 
-  const handleSaveAndPrint = async (e) => {
+  const handleSaveParcel = async (e) => {
     e.preventDefault();
-    if (!formData.recipient || !addressDetail) {
-      showToast('กรุณากรอกข้อมูลผู้รับและที่อยู่ให้ครบถ้วน');
+    if (!formData.productName || !formData.recipient || !formData.addressDetail) {
+      showToast('กรุณากรอกข้อมูลสินค้า ผู้รับ และที่อยู่ให้ครบถ้วน');
       return;
     }
-    const fullLocation = `${addressDetail} จ.${selectedProvince}`;
+
     const newParcelData = { 
       ...formData, 
-      location: fullLocation, 
       createdBy: currentUser.email, 
       createdAt: serverTimestamp() 
     };
 
     setFormLoading(true);
     try {
-      const docRef = await addDoc(collection(db, "parcels"), newParcelData);
-      const dataForPrint = { ...newParcelData, id: docRef.id };
-       
-      if (formData.recipientEmail && window.emailjs) {
-        const emailParams = {
-          tracking_id: formData.trackingId,
-          recipient_name: formData.recipient,
-          recipient_email: formData.recipientEmail,
-          parcel_status: formData.status,
-          parcel_location: fullLocation
-        };
-        window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, emailParams, EMAILJS_PUBLIC_KEY)
-          .then(() => console.log('Email sent successfully'))
-          .catch((err) => console.log('Email Error:', err));
-      }
-
-      printLabel(dataForPrint);
-      showToast('บันทึก, ส่งอีเมล และสร้างใบปะหน้าสำเร็จ!');
-      setFormData({ trackingId: generateTrackingId(), recipient: '', recipientEmail: '', phone: '', status: 'รับฝากชำระแล้ว' });
-      setAddressDetail('');
+      const docRef = await addDoc(collection(db, "warehouse_parcels"), newParcelData);
+      printLabel({ ...newParcelData, id: docRef.id });
+      showToast('บันทึกรับเข้าคลังและสร้างใบปะหน้าสำเร็จ!');
+      setFormData({ 
+        trackingId: generateTrackingId(), 
+        productName: '', 
+        quantity: 1, 
+        recipient: '', 
+        phone: '', 
+        destinationProvince: 'กรุงเทพมหานคร', 
+        addressDetail: '', 
+        status: 'รับเข้าคลังหลัก (สโตร์)' 
+      });
     } catch (err) {
       showToast('เกิดข้อผิดพลาดในการบันทึก');
     }
     setFormLoading(false);
   };
 
+  const handleUpdateStatus = async (id, newStatus) => {
+    if (userRole === 'User') return;
+    try {
+      await updateDoc(doc(db, "warehouse_parcels", id), { status: newStatus });
+      showToast(`อัปเดตสถานะเป็น "${newStatus}" สำเร็จ`);
+    } catch (err) {
+      showToast('เกิดข้อผิดพลาดในการอัปเดต');
+    }
+  };
+
   const handleDeleteParcel = async (id) => {
-    if (userRole !== 'Admin') return;
-    if (window.confirm('คุณต้องการลบรายการพัสดุนี้ใช่หรือไม่?')) {
+    if (userRole !== 'Owner' && userRole !== 'Admin') {
+      showToast('เฉพาะเจ้าของและผู้ดูแลเท่านั้นที่ลบข้อมูลได้');
+      return;
+    }
+    if (window.confirm('คุณต้องการลบรายการพัสดุตะกร้านี้ใช่หรือไม่?')) {
       try {
-        await deleteDoc(doc(db, "parcels", id));
+        await deleteDoc(doc(db, "warehouse_parcels", id));
         showToast('ลบรายการพัสดุสำเร็จ');
       } catch (err) {
         showToast('เกิดข้อผิดพลาดในการลบ');
@@ -246,54 +230,39 @@ export default function App() {
 
   if (authLoading) {
     return (
-      <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#fff', background: '#0b0f19', margin: 0, padding: 0 }}>
-        กำลังโหลดระบบ...
+      <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#fff', background: '#0b0f19' }}>
+        กำลังโหลดระบบคลังสินค้า...
       </div>
     );
   }
 
   if (!currentUser) {
     return (
-      <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', minWidth: '100%', minHeight: '100%', background: '#0b0f19', color: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif', margin: 0, padding: 0, overflow: 'auto' }}>
+      <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: '#0b0f19', color: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif' }}>
         <div style={{ background: '#131b2e', padding: '40px', borderRadius: '16px', width: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', border: '1px solid #1e293b', textAlign: 'center' }}>
-          
-          <div style={{ display: 'inline-block', background: '#1e293b', color: '#38bdf8', padding: '6px 16px', borderRadius: '20px', fontSize: '13px', marginBottom: '20px', fontWeight: '500' }}>
-            ● ระบบจัดการและติดตามพัสดุ
+          <div style={{ display: 'inline-block', background: '#1e293b', color: '#38bdf8', padding: '6px 16px', borderRadius: '20px', fontSize: '13px', marginBottom: '20px' }}>
+            ● ระบบคลังสินค้าและกระจายสินค้า
           </div>
-
-          <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 8px 0', letterSpacing: '0.5px', color: '#38bdf8' }}>
-            D-MAIL <span style={{ color: '#38bdf8' }}>LOGISTICS</span>
+          <h1 style={{ fontSize: '22px', fontWeight: 'bold', margin: '0 0 8px 0', color: '#ffffff' }}>
+            CENTRAL <span style={{ color: '#38bdf8' }}>WAREHOUSE</span>
           </h1>
-          <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '30px' }}>
-            {isRegisterMode ? 'สร้างบัญชีผู้ใช้งานใหม่' : 'กรุณาเข้าสู่ระบบเพื่อเข้าใช้งานแผงบอร์ด'}
-          </p>
+          <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '25px' }}>กรุณาเข้าสู่ระบบเพื่อจัดการพัสดุ</p>
 
           {authError && <div style={{ color: '#ef4444', marginBottom: '15px', fontSize: '13px' }}>{authError}</div>}
           
           <form onSubmit={handleAuthSubmit} style={{ textAlign: 'left' }}>
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: '#cbd5e1' }}>อีเมล</label>
+              <input type="email" placeholder="user@gmail.com" value={email} onChange={e => setEmail(e.target.value)} required style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
+            </div>
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: '#cbd5e1' }}>อีเมลผู้ใช้งาน</label>
-              <input type="email" placeholder="admin@gmail.com" value={email} onChange={e => setEmail(e.target.value)} required style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: '#cbd5e1' }}>รหัสผ่าน</label>
+              <input type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
             </div>
-            
-            <div style={{ marginBottom: '25px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: '#cbd5e1' }}>รหัสผ่าน</label>
-              <input type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
-            </div>
-
-            <button type="submit" style={{ width: '100%', padding: '12px', background: '#06b6d4', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px', boxShadow: '0 4px 12px rgba(6,182,212,0.3)' }}>
-              {isRegisterMode ? 'ลงทะเบียน' : 'เข้าสู่ระบบ'}
+            <button type="submit" style={{ width: '100%', padding: '12px', background: '#06b6d4', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px' }}>
+              เข้าสู่ระบบ
             </button>
           </form>
-
-          <div style={{ marginTop: '20px', fontSize: '13px', color: '#94a3b8' }}>
-            {isRegisterMode ? (
-              <span>มีบัญชีอยู่แล้ว? <button onClick={() => { setIsRegisterMode(false); setAuthError(''); }} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontWeight: 'bold', padding: 0 }}>เข้าสู่ระบบที่นี่</button></span>
-            ) : (
-              <span>ยังไม่มีบัญชีใช่ไหม? <button onClick={() => { setIsRegisterMode(true); setAuthError(''); }} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontWeight: 'bold', padding: 0 }}>ลงทะเบียนผู้ใช้ใหม่</button></span>
-            )}
-          </div>
-
         </div>
       </div>
     );
@@ -301,26 +270,24 @@ export default function App() {
 
   if (showRoleSelector) {
     return (
-      <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', minWidth: '100%', minHeight: '100%', background: '#0b0f19', color: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif', margin: 0, padding: 0, overflow: 'auto' }}>
-        <div style={{ background: '#131b2e', padding: '30px', borderRadius: '16px', width: '350px', textAlign: 'center', border: '1px solid #1e293b' }}>
+      <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: '#0b0f19', color: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif' }}>
+        <div style={{ background: '#131b2e', padding: '30px', borderRadius: '16px', width: '360px', textAlign: 'center', border: '1px solid #1e293b' }}>
           <h2>เลือกบทบาทของคุณ</h2>
-          <p style={{ color: '#aaa', fontSize: '14px', marginBottom: '20px' }}>กรุณาเลือกสิทธิ์การใช้งานระบบ</p>
-          <button onClick={() => selectRole('Admin')} style={{ width: '100%', padding: '12px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '10px' }}>Admin (ผู้ดูแลระบบ)</button>
-          <button onClick={() => selectRole('User')} style={{ width: '100%', padding: '12px', background: '#475569', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>User (ผู้ใช้งานทั่วไป)</button>
+          <p style={{ color: '#aaa', fontSize: '13px', marginBottom: '20px' }}>กำหนดสิทธิ์การใช้งานในระบบคลังพัสดุ</p>
+          <button onClick={() => selectRole('Owner')} style={{ width: '100%', padding: '12px', background: '#8b5cf6', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '10px' }}>👑 Owner (เจ้าของ)</button>
+          <button onClick={() => selectRole('Admin')} style={{ width: '100%', padding: '12px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '10px' }}>🛡️ Admin (ผู้ดูแล)</button>
+          <button onClick={() => selectRole('Staff')} style={{ width: '100%', padding: '12px', background: '#059669', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '10px' }}>👷 Staff (เจ้าหน้าที่)</button>
+          <button onClick={() => selectRole('User')} style={{ width: '100%', padding: '12px', background: '#475569', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>👤 User (ผู้ใช้งานทั่วไป)</button>
         </div>
       </div>
     );
   }
 
-  const accessibleParcels = parcels.filter(item => {
-    if (userRole === 'Admin') return true;
-    return item.recipientEmail === currentUser.email || item.createdBy === currentUser.email;
-  });
-
-  const filteredParcels = accessibleParcels.filter(item => {
+  const filteredParcels = parcels.filter(item => {
     const matchSearch = item.trackingId.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           item.recipient.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          (item.phone && item.phone.includes(searchTerm));
+                          item.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          item.destinationProvince.includes(searchTerm);
     const matchStatus = statusFilter === 'ทั้งหมด' || item.status === statusFilter;
     return matchSearch && matchStatus;
   });
@@ -335,10 +302,13 @@ export default function App() {
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 40px', background: '#131b2e', borderBottom: '1px solid #1e293b' }}>
-        <h2 style={{ margin: 0, letterSpacing: '1px', color: '#38bdf8' }}>D-MAIL <span style={{ color: '#38bdf8' }}>LOGISTICS</span></h2>
+        <h2 style={{ margin: 0, letterSpacing: '1px' }}>CENTRAL <span style={{ color: '#38bdf8' }}>WAREHOUSE</span></h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <span style={{ background: userRole === 'Admin' ? '#0284c7' : '#475569', padding: '5px 12px', borderRadius: '15px', fontSize: '13px' }}>
-            {userRole === 'Admin' ? 'Admin (ผู้ดูแลระบบ)' : 'User (ผู้ใช้งาน)'}
+          <span style={{ 
+            background: userRole === 'Owner' ? '#8b5cf6' : userRole === 'Admin' ? '#0284c7' : userRole === 'Staff' ? '#059669' : '#475569', 
+            padding: '5px 12px', borderRadius: '15px', fontSize: '13px', fontWeight: 'bold' 
+          }}>
+            สิทธิ์: {userRole}
           </span>
           <button onClick={() => signOut(auth)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>ออกจากระบบ</button>
         </div>
@@ -346,119 +316,162 @@ export default function App() {
 
       <div style={{ padding: '30px 40px', maxWidth: '1200px', margin: '0 auto' }}>
         
-        {userRole === 'Admin' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '30px' }}>
-            <div style={{ background: '#131b2e', padding: '20px', borderRadius: '10px', textAlign: 'center', border: '1px solid #1e293b' }}>
-              <div style={{ color: '#94a3b8', fontSize: '14px' }}>พัสดุทั้งหมดในระบบ</div>
-              <div style={{ fontSize: '24px', fontWeight: 'bold', marginTop: '5px' }}>{parcels.length} รายการ</div>
-            </div>
-            <div style={{ background: '#131b2e', padding: '20px', borderRadius: '10px', textAlign: 'center', border: '1px solid #1e293b' }}>
-              <div style={{ color: '#94a3b8', fontSize: '14px' }}>รับฝากชำระแล้ว</div>
-              <div style={{ fontSize: '24px', fontWeight: 'bold', marginTop: '5px' }}>{parcels.filter(p => p.status === 'รับฝากชำระแล้ว').length} รายการ</div>
-            </div>
-            <div style={{ background: '#131b2e', padding: '20px', borderRadius: '10px', textAlign: 'center', border: '1px solid #1e293b' }}>
-              <div style={{ color: '#94a3b8', fontSize: '14px' }}>กำลังจัดส่ง</div>
-              <div style={{ fontSize: '24px', fontWeight: 'bold', marginTop: '5px' }}>{parcels.filter(p => p.status === 'กำลังจัดส่ง').length} รายการ</div>
-            </div>
+        {/* สถิติคลังสินค้า */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px', marginBottom: '25px' }}>
+          <div style={{ background: '#131b2e', padding: '15px', borderRadius: '10px', textAlign: 'center', border: '1px solid #1e293b' }}>
+            <div style={{ color: '#94a3b8', fontSize: '13px' }}>พัสดุทั้งหมด</div>
+            <div style={{ fontSize: '20px', fontWeight: 'bold', marginTop: '5px' }}>{parcels.length} รายการ</div>
           </div>
-        )}
+          <div style={{ background: '#131b2e', padding: '15px', borderRadius: '10px', textAlign: 'center', border: '1px solid #1e293b' }}>
+            <div style={{ color: '#94a3b8', fontSize: '13px' }}>รับเข้าคลังหลัก (สโตร์)</div>
+            <div style={{ fontSize: '20px', fontWeight: 'bold', marginTop: '5px', color: '#38bdf8' }}>{parcels.filter(p => p.status === 'รับเข้าคลังหลัก (สโตร์)').length}</div>
+          </div>
+          <div style={{ background: '#131b2e', padding: '15px', borderRadius: '10px', textAlign: 'center', border: '1px solid #1e293b' }}>
+            <div style={{ color: '#94a3b8', fontSize: '13px' }}>กำลังกระจายส่งสินค้า</div>
+            <div style={{ fontSize: '20px', fontWeight: 'bold', marginTop: '5px', color: '#fbbf24' }}>{parcels.filter(p => p.status === 'กำลังกระจายส่ง').length}</div>
+          </div>
+          <div style={{ background: '#131b2e', padding: '15px', borderRadius: '10px', textAlign: 'center', border: '1px solid #1e293b' }}>
+            <div style={{ color: '#94a3b8', fontSize: '13px' }}>จัดส่งสำเร็จ</div>
+            <div style={{ fontSize: '20px', fontWeight: 'bold', marginTop: '5px', color: '#22c55e' }}>{parcels.filter(p => p.status === 'จัดส่งสำเร็จ').length}</div>
+          </div>
+        </div>
 
-        {userRole === 'Admin' && (
-          <div style={{ background: '#131b2e', padding: '25px', borderRadius: '10px', border: '1px solid #1e293b', marginBottom: '35px' }}>
-            <h3 style={{ marginTop: 0, marginBottom: '20px', textAlign: 'center' }}>📝 สร้างรายการพัสดุใหม่ & พิมพ์ใบปะหน้า</h3>
-            <form onSubmit={handleSaveAndPrint}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '15px', marginBottom: '15px' }}>
+        {/* ฟอร์มรับเข้าคลังและกระจายส่ง (เฉพาะ Owner, Admin, Staff) */}
+        {userRole !== 'User' && (
+          <div style={{ background: '#131b2e', padding: '25px', borderRadius: '10px', border: '1px solid #1e293b', marginBottom: '30px' }}>
+            <h3 style={{ marginTop: 0, marginBottom: '20px' }}>📦 รับเข้าคลังหลัก (สโตร์) & กระจายส่งสินค้า</h3>
+            <form onSubmit={handleSaveParcel}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px', marginBottom: '15px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '5px' }}>Tracking ID (รันออโต้)</label>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '5px' }}>Tracking ID (รันอัตโนมัติ)</label>
                   <input type="text" value={formData.trackingId} disabled style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#888', boxSizing: 'border-box' }} />
                 </div>
                 <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '5px' }}>ชื่อสินค้า / รายการเบิก</label>
+                  <input type="text" placeholder="เช่น อุปกรณ์ไอที, เสื้อผ้า" value={formData.productName} onChange={e => setFormData({...formData, productName: e.target.value})} required style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '5px' }}>จำนวน</label>
+                  <input type="number" min="1" value={formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} required style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
+                </div>
+                <div>
                   <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '5px' }}>ชื่อผู้รับ</label>
-                  <input type="text" placeholder="ชื่อผู้รับ" value={formData.recipient} onChange={e => setFormData({...formData, recipient: e.target.value})} required style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
+                  <input type="text" placeholder="ชื่อผู้รับปลายทาง" value={formData.recipient} onChange={e => setFormData({...formData, recipient: e.target.value})} required style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', marginBottom: '15px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '5px' }}>เบอร์โทรผู้รับ</label>
+                  <input type="text" placeholder="0812345678" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '5px' }}>อีเมลผู้รับ (สำหรับส่งแจ้งเตือน)</label>
-                  <input type="email" placeholder="example@gmail.com" value={formData.recipientEmail} onChange={e => setFormData({...formData, recipientEmail: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '5px' }}>เบอร์โทรศัพท์</label>
-                  <input type="text" placeholder="081234567" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '5px' }}>จังหวัดปลายทาง</label>
-                  <select value={selectedProvince} onChange={e => setSelectedProvince(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }}>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '5px' }}>เลือกจังหวัดปลายทาง (77 จังหวัด)</label>
+                  <select value={formData.destinationProvince} onChange={e => setFormData({...formData, destinationProvince: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }}>
                     {THAI_PROVINCES.map(prov => <option key={prov} value={prov}>{prov}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '5px' }}>สถานะเริ่มต้น</label>
+                  <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }}>
+                    <option value="รับเข้าคลังหลัก (สโตร์)">รับเข้าคลังหลัก (สโตร์)</option>
+                    <option value="กำลังกระจายส่ง">กำลังกระจายส่ง</option>
                   </select>
                 </div>
               </div>
 
               <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '5px' }}>ที่อยู่รายละเอียด (บ้านเลขที่, ถนน, ตำบล, อำเภอ)</label>
-                <input type="text" placeholder="เช่น 99/9 ถ.สุขุมวิท" value={addressDetail} onChange={e => setAddressDetail(e.target.value)} required style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
+                <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '5px' }}>ที่อยู่ปลายทางโดยละเอียด</label>
+                <input type="text" placeholder="บ้านเลขที่, ถนน, ตำบล, อำเภอ" value={formData.addressDetail} onChange={e => setFormData({...formData, addressDetail: e.target.value})} required style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
               </div>
 
               <button type="submit" disabled={formLoading} style={{ width: '100%', padding: '12px', background: '#22c55e', color: '#fff', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px' }}>
-                {formLoading ? 'กำลังบันทึกและส่งเมล...' : '💾 บันทึกข้อมูล ส่งอีเมล และพิมพ์ใบปะหน้า'}
+                {formLoading ? 'กำลังบันทึก...' : '💾 บันทึกรับเข้าคลัง และพิมพ์ใบปะหน้า (มี QR Code)'}
               </button>
             </form>
           </div>
         )}
 
+        {/* ตารางแสดงรายการพัสดุ */}
         <div style={{ background: '#131b2e', padding: '20px', borderRadius: '10px', border: '1px solid #1e293b' }}>
-          <h3 style={{ marginTop: 0, marginBottom: '20px' }}>📦 รายการพัสดุของคุณ ({filteredParcels.length})</h3>
+          <h3 style={{ marginTop: 0, marginBottom: '20px' }}>📋 รายการพัสดุและการกระจายสินค้า ({filteredParcels.length})</h3>
           
           <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
-            <input type="text" placeholder="🔍 ค้นหา Tracking, ผู้รับ, เบอร์โทร..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff' }} />
+            <input type="text" placeholder="🔍 ค้นหา Tracking, สินค้า, ผู้รับ, จังหวัด..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff' }} />
             <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff' }}>
               <option value="ทั้งหมด">สถานะ: ทั้งหมด</option>
-              <option value="รับฝากชำระแล้ว">รับฝากชำระแล้ว</option>
-              <option value="กำลังจัดส่ง">กำลังจัดส่ง</option>
+              <option value="รับเข้าคลังหลัก (สโตร์)">รับเข้าคลังหลัก (สโตร์)</option>
+              <option value="กำลังกระจายส่ง">กำลังกระจายส่ง</option>
+              <option value="จัดส่งสำเร็จ">จัดส่งสำเร็จ</option>
             </select>
           </div>
 
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid #334155', color: '#94a3b8', fontSize: '14px' }}>
-                <th style={{ padding: '10px' }}>Tracking ID</th>
-                <th style={{ padding: '10px' }}>ผู้รับ & เบอร์/อีเมล</th>
-                <th style={{ padding: '10px' }}>ปลายทาง</th>
-                <th style={{ padding: '10px' }}>สถานะ</th>
-                {userRole === 'Admin' && <th style={{ padding: '10px', textAlign: 'center' }}>จัดการ</th>}
+              <tr style={{ borderBottom: '1px solid #334155', color: '#94a3b8', fontSize: '13px' }}>
+                <th style={{ padding: '10px' }}>Tracking / สินค้า</th>
+                <th style={{ padding: '10px' }}>ผู้รับ & เบอร์โทร</th>
+                <th style={{ padding: '10px' }}>ปลายทาง (จังหวัด)</th>
+                <th style={{ padding: '10px' }}>สถานะพัสดุ</th>
+                <th style={{ padding: '10px', textAlign: 'center' }}>จัดการ / อัปเดตสถานะ</th>
               </tr>
             </thead>
             <tbody>
               {filteredParcels.length === 0 ? (
                 <tr>
-                  <td colSpan={userRole === 'Admin' ? "5" : "4"} style={{ textAlign: 'center', padding: '30px', color: '#777' }}>ไม่พบรายการพัสดุของคุณ</td>
+                  <td colSpan="5" style={{ textAlign: 'center', padding: '30px', color: '#777' }}>ไม่พบข้อมูลพัสดุ</td>
                 </tr>
               ) : (
                 filteredParcels.map(item => (
                   <tr key={item.id} style={{ borderBottom: '1px solid #1e293b', fontSize: '14px' }}>
-                    <td style={{ padding: '12px', fontWeight: 'bold', color: '#38bdf8' }}>{item.trackingId}</td>
+                    <td style={{ padding: '12px' }}>
+                      <div style={{ fontWeight: 'bold', color: '#38bdf8' }}>{item.trackingId}</div>
+                      <div style={{ fontSize: '13px', color: '#fff' }}>📦 {item.productName} (x{item.quantity})</div>
+                    </td>
                     <td style={{ padding: '12px' }}>
                       <div>{item.recipient}</div>
-                      <div style={{ fontSize: '12px', color: '#94a3b8' }}>{item.phone || '-'} | {item.recipientEmail || 'ไม่มีอีเมล'}</div>
+                      <div style={{ fontSize: '12px', color: '#94a3b8' }}>{item.phone || '-'}</div>
                     </td>
-                    <td style={{ padding: '12px' }}>{item.location}</td>
                     <td style={{ padding: '12px' }}>
-                      <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '12px', background: item.status === 'กำลังจัดส่ง' ? '#0369a1' : '#334155' }}>
+                      <div style={{ fontWeight: 'bold' }}>จ.{item.destinationProvince}</div>
+                      <div style={{ fontSize: '12px', color: '#94a3b8' }}>{item.addressDetail}</div>
+                    </td>
+                    <td style={{ padding: '12px' }}>
+                      <span style={{ 
+                        padding: '5px 10px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold',
+                        background: item.status === 'จัดส่งสำเร็จ' ? '#065f46' : item.status === 'กำลังกระจายส่ง' ? '#b45309' : '#1e3a8a' 
+                      }}>
                         {item.status}
                       </span>
                     </td>
-                    {userRole === 'Admin' && (
-                      <td style={{ padding: '12px', textAlign: 'center' }}>
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
-                          <button onClick={() => printLabel(item)} style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}>🖨️ พิมพ์</button>
-                          <button onClick={() => handleDeleteParcel(item.id)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}>🗑️ ลบ</button>
-                        </div>
-                      </td>
-                    )}
+                    <td style={{ padding: '12px', textAlign: 'center' }}>
+                      <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <button onClick={() => printLabel(item)} style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>🖨️ ปริ้นท์ QR</button>
+                        
+                        {userRole !== 'User' && (
+                          <select 
+                            value={item.status} 
+                            onChange={(e) => handleUpdateStatus(item.id, e.target.value)}
+                            style={{ background: '#0f172a', color: '#fff', border: '1px solid #334155', padding: '5px', borderRadius: '4px', fontSize: '12px' }}
+                          >
+                            <option value="รับเข้าคลังหลัก (สโตร์)">รับเข้าคลังหลัก</option>
+                            <option value="กำลังกระจายส่ง">กำลังกระจายส่ง</option>
+                            <option value="จัดส่งสำเร็จ">จัดส่งสำเร็จ</option>
+                          </select>
+                        )}
+
+                        {(userRole === 'Owner' || userRole === 'Admin') && (
+                          <button onClick={() => handleDeleteParcel(item.id)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>🗑️ ลบ</button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))
               )}
             </tbody>
           </table>
         </div>
+
       </div>
     </div>
   );

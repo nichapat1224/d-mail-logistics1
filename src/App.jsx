@@ -319,7 +319,7 @@ export default function App() {
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 40px', background: '#131b2e', borderBottom: '1px solid #1e293b' }}>
-        <h2 style={{ margin: 0, letterSpacing: '1px' }}>CENTRAL <span style={{ color: '#38bdf8' }}>WAREHOUSE</span></h2>
+        <h2 style={{ margin: 0, letterSpacing: '1px', color: '#ffffff' }}>CENTRAL <span style={{ color: '#38bdf8' }}>WAREHOUSE</span></h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <span style={{ 
             background: userRole === 'Admin' ? '#0284c7' : '#059669', 

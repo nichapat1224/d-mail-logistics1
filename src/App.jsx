@@ -44,7 +44,7 @@ export default function App() {
   const [userRole, setUserRole] = useState(null); 
   const [authLoading, setAuthLoading] = useState(true);
   const [showRoleSelector, setShowRoleSelector] = useState(false);
-  const [isRegistering, setIsRegistering] = useState(false); // สลับหน้า เข้าสู่ระบบ / สมัครสมาชิก
+  const [isRegistering, setIsRegistering] = useState(false);
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -55,7 +55,6 @@ export default function App() {
   const [statusFilter, setStatusFilter] = useState('ทั้งหมด');
   const [toast, setToast] = useState('');
   
-  // ฟอร์มรับเข้าคลัง / กระจายสินค้า
   const [formData, setFormData] = useState({ 
     trackingId: generateTrackingId(), 
     productName: '',
@@ -273,7 +272,6 @@ export default function App() {
             </button>
           </form>
 
-          {/* ปุ่มสลับโหมด ลงทะเบียน / เข้าสู่ระบบ ด้านล่าง */}
           <div style={{ marginTop: '20px', fontSize: '13px', color: '#94a3b8' }}>
             {isRegistering ? (
               <span>มีบัญชีอยู่แล้ว? <button onClick={() => setIsRegistering(false)} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontWeight: 'bold', padding: 0, fontSize: '13px' }}>เข้าสู่ระบบที่นี่</button></span>
@@ -291,8 +289,8 @@ export default function App() {
     return (
       <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: '#0b0f19', color: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif' }}>
         <div style={{ background: '#131b2e', padding: '30px', borderRadius: '16px', width: '360px', textAlign: 'center', border: '1px solid #1e293b' }}>
-          <h2>เลือกบทบาทของคุณ</h2>
-          <p style={{ color: '#aaa', fontSize: '13px', marginBottom: '20px' }}>กำหนดสิทธิ์การใช้งานในระบบคลังพัสดุ</p>
+          <h2 style={{ color: '#ffffff', margin: '0 0 8px 0' }}>เลือกบทบาทของคุณ</h2>
+          <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '20px' }}>กำหนดสิทธิ์การใช้งานในระบบคลังพัสดุ</p>
           <button onClick={() => selectRole('Owner')} style={{ width: '100%', padding: '12px', background: '#8b5cf6', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '10px' }}>👑 Owner (เจ้าของ)</button>
           <button onClick={() => selectRole('Admin')} style={{ width: '100%', padding: '12px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '10px' }}>🛡️ Admin (ผู้ดูแล)</button>
           <button onClick={() => selectRole('Staff')} style={{ width: '100%', padding: '12px', background: '#059669', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '10px' }}>👷 Staff (เจ้าหน้าที่)</button>
@@ -355,7 +353,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* ฟอร์มรับเข้าคลังและกระจายส่ง (เฉพาะ Owner, Admin, Staff) */}
+        {/* ฟอร์มรับเข้าคลังและกระจายส่ง */}
         {userRole !== 'User' && (
           <div style={{ background: '#131b2e', padding: '25px', borderRadius: '10px', border: '1px solid #1e293b', marginBottom: '30px' }}>
             <h3 style={{ marginTop: 0, marginBottom: '20px' }}>📦 รับเข้าคลังหลัก (สโตร์) & กระจายส่งสินค้า</h3>
@@ -417,7 +415,7 @@ export default function App() {
           
           <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
             <input type="text" placeholder="🔍 ค้นหา Tracking, สินค้า, ผู้รับ, จังหวัด..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff' }} />
-            <select value={statusFilter} onChange={e => setSearchTerm(e.target.value) /* แก้ฟิลเตอร์สถานะ */} style={{ padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff' }} onChange={e => setStatusFilter(e.target.value)}>
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff' }}>
               <option value="ทั้งหมด">สถานะ: ทั้งหมด</option>
               <option value="รับเข้าคลังหลัก (สโตร์)">รับเข้าคลังหลัก (สโตร์)</option>
               <option value="กำลังกระจายส่ง">กำลังกระจายส่ง</option>

@@ -52,11 +52,12 @@ export default function App() {
   
   const [parcels, setParcels] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ทั้งหมด');
+  const [typeFilter, setTypeFilter] = useState('ทั้งหมด'); // กรองประเภท รับเข้า / เบิกออก
   const [toast, setToast] = useState('');
   
   const [formData, setFormData] = useState({ 
     trackingId: generateTrackingId(), 
+    transactionType: 'รับเข้า (Inbound)', // ประเภทรายการ
     productName: '',
     quantity: 1,
     recipient: '', 
@@ -156,16 +157,17 @@ export default function App() {
         </head>
         <body>
           <div class="label">
-            <h3 style="text-align:center; margin:0 0 8px 0;">CENTRAL WAREHOUSE SYSTEM</h3>
+            <h3 style="text-align:center; margin:0 0 8px 0;">CENTRAL WAREHOUSE</h3>
+            <div style="text-align:center; font-weight:bold; font-size:14px; margin-bottom:6px; color:${item.transactionType?.includes('รับเข้า') ? '#16a34a' : '#ea580c'};">[ ${item.transactionType} ]</div>
             <div class="barcode">${svgNode.outerHTML}</div>
             <p style="margin:4px 0;"><strong>Tracking:</strong> ${item.trackingId}</p>
             <p style="margin:4px 0;"><strong>สินค้า:</strong> ${item.productName} (จำนวน: ${item.quantity})</p>
-            <p style="margin:4px 0;"><strong>ผู้รับ:</strong> ${item.recipient} (${item.phone || '-'})</p>
-            <p style="margin:4px 0;"><strong>ปลายทาง:</strong> ${item.addressDetail} จ.${item.destinationProvince}</p>
+            <p style="margin:4px 0;"><strong>ผู้รับ/ผู้เบิก:</strong> ${item.recipient} (${item.phone || '-'})</p>
+            <p style="margin:4px 0;"><strong>ปลายทาง/หน่วยงาน:</strong> ${item.addressDetail} จ.${item.destinationProvince}</p>
             <p style="margin:4px 0;"><strong>สถานะ:</strong> ${item.status}</p>
             <div style="text-align:center; margin-top:10px;">
               <img src="${qrCodeUrl}" width="85" alt="QR Code" />
-              <div style="font-size: 9px; color: #333; margin-top: 2px;">สแกนเพื่อเช็คสถานะพัสดุ</div>
+              <div style="font-size: 9px; color: #333; margin-top: 2px;">สแกนเพื่อเช็คสถานะ</div>
             </div>
           </div>
           <button onclick="window.print()">🖨️ สั่งพิมพ์ใบปะหน้า</button>
@@ -192,9 +194,10 @@ export default function App() {
     try {
       const docRef = await addDoc(collection(db, "warehouse_parcels"), newParcelData);
       printLabel({ ...newParcelData, id: docRef.id });
-      showToast('บันทึกรับเข้าคลังและสร้างใบปะหน้าสำเร็จ!');
+      showToast(`บันทึกรายการ "${formData.transactionType}" สำเร็จ!`);
       setFormData({ 
         trackingId: generateTrackingId(), 
+        transactionType: 'รับเข้า (Inbound)',
         productName: '', 
         quantity: 1, 
         recipient: '', 
@@ -224,7 +227,7 @@ export default function App() {
       showToast('เฉพาะเจ้าของและผู้ดูแลเท่านั้นที่ลบข้อมูลได้');
       return;
     }
-    if (window.confirm('คุณต้องการลบรายการพัสดุตะกร้านี้ใช่หรือไม่?')) {
+    if (window.confirm('คุณต้องการลบรายการพัสดุนี้ใช่หรือไม่?')) {
       try {
         await deleteDoc(doc(db, "warehouse_parcels", id));
         showToast('ลบรายการพัสดุสำเร็จ');
@@ -247,13 +250,13 @@ export default function App() {
       <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: '#0b0f19', color: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif' }}>
         <div style={{ background: '#131b2e', padding: '40px', borderRadius: '16px', width: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', border: '1px solid #1e293b', textAlign: 'center' }}>
           <div style={{ display: 'inline-block', background: '#1e293b', color: '#38bdf8', padding: '6px 16px', borderRadius: '20px', fontSize: '13px', marginBottom: '20px' }}>
-            ● ระบบคลังสินค้าและกระจายสินค้า
+            ● ระบบคลังสินค้า (รับเข้า-เบิกออก)
           </div>
           <h1 style={{ fontSize: '22px', fontWeight: 'bold', margin: '0 0 8px 0', color: '#ffffff' }}>
             CENTRAL <span style={{ color: '#38bdf8' }}>WAREHOUSE</span>
           </h1>
           <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '25px' }}>
-            {isRegistering ? 'กรอกข้อมูลเพื่อสมัครสมาชิกใหม่' : 'กรุณาเข้าสู่ระบบเพื่อจัดการพัสดุ'}
+            {isRegistering ? 'กรอกข้อมูลเพื่อสมัครสมาชิกใหม่' : 'กรุณาเข้าสู่ระบบเพื่อจัดการคลังสินค้า'}
           </p>
 
           {authError && <div style={{ color: '#ef4444', marginBottom: '15px', fontSize: '13px' }}>{authError}</div>}
@@ -305,8 +308,8 @@ export default function App() {
                           item.recipient.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           item.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           item.destinationProvince.includes(searchTerm);
-    const matchStatus = statusFilter === 'ทั้งหมด' || item.status === statusFilter;
-    return matchSearch && matchStatus;
+    const matchType = typeFilter === 'ทั้งหมด' || item.transactionType === typeFilter;
+    return matchSearch && matchType;
   });
 
   return (
@@ -333,161 +336,171 @@ export default function App() {
 
       <div style={{ padding: '30px 40px', maxWidth: '1200px', margin: '0 auto' }}>
         
-        {/* สถิติคลังสินค้า */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px', marginBottom: '25px' }}>
-          <div style={{ background: '#131b2e', padding: '15px', borderRadius: '10px', textAlign: 'center', border: '1px solid #1e293b' }}>
-            <div style={{ color: '#94a3b8', fontSize: '13px' }}>พัสดุทั้งหมด</div>
-            <div style={{ fontSize: '20px', fontWeight: 'bold', marginTop: '5px' }}>{parcels.length} รายการ</div>
-          </div>
-          <div style={{ background: '#131b2e', padding: '15px', borderRadius: '10px', textAlign: 'center', border: '1px solid #1e293b' }}>
-            <div style={{ color: '#94a3b8', fontSize: '13px' }}>รับเข้าคลังหลัก (สโตร์)</div>
-            <div style={{ fontSize: '20px', fontWeight: 'bold', marginTop: '5px', color: '#38bdf8' }}>{parcels.filter(p => p.status === 'รับเข้าคลังหลัก (สโตร์)').length}</div>
-          </div>
-          <div style={{ background: '#131b2e', padding: '15px', borderRadius: '10px', textAlign: 'center', border: '1px solid #1e293b' }}>
-            <div style={{ color: '#94a3b8', fontSize: '13px' }}>กำลังกระจายส่งสินค้า</div>
-            <div style={{ fontSize: '20px', fontWeight: 'bold', marginTop: '5px', color: '#fbbf24' }}>{parcels.filter(p => p.status === 'กำลังกระจายส่ง').length}</div>
-          </div>
-          <div style={{ background: '#131b2e', padding: '15px', borderRadius: '10px', textAlign: 'center', border: '1px solid #1e293b' }}>
-            <div style={{ color: '#94a3b8', fontSize: '13px' }}>จัดส่งสำเร็จ</div>
-            <div style={{ fontSize: '20px', fontWeight: 'bold', marginTop: '5px', color: '#22c55e' }}>{parcels.filter(p => p.status === 'จัดส่งสำเร็จ').length}</div>
-          </div>
-        </div>
+        {userRole !== 'User' ? (
+          <>
+            {/* สถิติคลังสินค้า */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', marginBottom: '25px' }}>
+              <div style={{ background: '#131b2e', padding: '15px', borderRadius: '10px', textAlign: 'center', border: '1px solid #1e293b' }}>
+                <div style={{ color: '#94a3b8', fontSize: '13px' }}>รายการทั้งหมด</div>
+                <div style={{ fontSize: '20px', fontWeight: 'bold', marginTop: '5px' }}>{parcels.length} รายการ</div>
+              </div>
+              <div style={{ background: '#131b2e', padding: '15px', borderRadius: '10px', textAlign: 'center', border: '1px solid #1e293b' }}>
+                <div style={{ color: '#94a3b8', fontSize: '13px' }}>รายการรับเข้า (Inbound)</div>
+                <div style={{ fontSize: '20px', fontWeight: 'bold', marginTop: '5px', color: '#22c55e' }}>{parcels.filter(p => p.transactionType?.includes('รับเข้า')).length}</div>
+              </div>
+              <div style={{ background: '#131b2e', padding: '15px', borderRadius: '10px', textAlign: 'center', border: '1px solid #1e293b' }}>
+                <div style={{ color: '#94a3b8', fontSize: '13px' }}>รายการเบิกออก (Outbound)</div>
+                <div style={{ fontSize: '20px', fontWeight: 'bold', marginTop: '5px', color: '#f97316' }}>{parcels.filter(p => p.transactionType?.includes('เบิกออก')).length}</div>
+              </div>
+            </div>
 
-        {/* ฟอร์มรับเข้าคลังและกระจายส่ง */}
-        {userRole !== 'User' && (
-          <div style={{ background: '#131b2e', padding: '25px', borderRadius: '10px', border: '1px solid #1e293b', marginBottom: '30px' }}>
-            <h3 style={{ marginTop: 0, marginBottom: '20px' }}>📦 รับเข้าคลังหลัก (สโตร์) & กระจายส่งสินค้า</h3>
-            <form onSubmit={handleSaveParcel}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px', marginBottom: '15px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '5px' }}>Tracking ID (รันอัตโนมัติ)</label>
-                  <input type="text" value={formData.trackingId} disabled style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#888', boxSizing: 'border-box' }} />
+            {/* ฟอร์มบันทึก รับเข้า / เบิกออก */}
+            <div style={{ background: '#131b2e', padding: '25px', borderRadius: '10px', border: '1px solid #1e293b', marginBottom: '30px' }}>
+              <h3 style={{ marginTop: 0, marginBottom: '20px' }}>📦 บันทึกรายการคลังสินค้า (รับเข้า / เบิกออก)</h3>
+              <form onSubmit={handleSaveParcel}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px', marginBottom: '15px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '5px' }}>ประเภทรายการ</label>
+                    <select value={formData.transactionType} onChange={e => setFormData({...formData, transactionType: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box', fontWeight: 'bold' }}>
+                      <option value="รับเข้า (Inbound)">🟢 รับเข้า (Inbound)</option>
+                      <option value="เบิกออก (Outbound)">🟠 เบิกออก (Outbound)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '5px' }}>ชื่อสินค้า / รายการพัสดุ</label>
+                    <input type="text" placeholder="เช่น อุปกรณ์ไอที, อะไหล่" value={formData.productName} onChange={e => setFormData({...formData, productName: e.target.value})} required style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '5px' }}>จำนวน</label>
+                    <input type="number" min="1" value={formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} required style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '5px' }}>ผู้รับ / ผู้เบิกสินค้า</label>
+                    <input type="text" placeholder="ชื่อผู้รับหรือแผนกที่เบิก" value={formData.recipient} onChange={e => setFormData({...formData, recipient: e.target.value})} required style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
+                  </div>
                 </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '5px' }}>ชื่อสินค้า / รายการเบิก</label>
-                  <input type="text" placeholder="เช่น อุปกรณ์ไอที, เสื้อผ้า" value={formData.productName} onChange={e => setFormData({...formData, productName: e.target.value})} required style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', marginBottom: '15px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '5px' }}>เบอร์โทรติดต่อ</label>
+                    <input type="text" placeholder="0812345678" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '5px' }}>จังหวัด / ปลายทาง</label>
+                    <select value={formData.destinationProvince} onChange={e => setFormData({...formData, destinationProvince: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }}>
+                      {THAI_PROVINCES.map(prov => <option key={prov} value={prov}>{prov}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '5px' }}>สถานะเริ่มต้น</label>
+                    <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }}>
+                      <option value="รับเข้าคลังหลัก (สโตร์)">รับเข้าคลังหลัก (สโตร์)</option>
+                      <option value="กำลังกระจายส่ง">กำลังกระจายส่ง</option>
+                      <option value="จัดส่งสำเร็จ">จัดส่งสำเร็จ</option>
+                    </select>
+                  </div>
                 </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '5px' }}>จำนวน</label>
-                  <input type="number" min="1" value={formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} required style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
+
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '5px' }}>ที่อยู่หรือรายละเอียดเพิ่มเติม</label>
+                  <input type="text" placeholder="บ้านเลขที่, อาคาร, แผนก" value={formData.addressDetail} onChange={e => setFormData({...formData, addressDetail: e.target.value})} required style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
                 </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '5px' }}>ชื่อผู้รับ</label>
-                  <input type="text" placeholder="ชื่อผู้รับปลายทาง" value={formData.recipient} onChange={e => setFormData({...formData, recipient: e.target.value})} required style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
-                </div>
+
+                <button type="submit" disabled={formLoading} style={{ width: '100%', padding: '12px', background: '#22c55e', color: '#fff', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px' }}>
+                  {formLoading ? 'กำลังบันทึก...' : '💾 บันทึกรายการ และพิมพ์ใบปะหน้า (พร้อม Barcode & QR)'}
+                </button>
+              </form>
+            </div>
+
+            {/* ตารางประวัติรายการคลังสินค้า */}
+            <div style={{ background: '#131b2e', padding: '20px', borderRadius: '10px', border: '1px solid #1e293b' }}>
+              <h3 style={{ marginTop: 0, marginBottom: '20px' }}>📋 ประวัติการรับเข้าและเบิกออก ({filteredParcels.length})</h3>
+              
+              <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
+                <input type="text" placeholder="🔍 ค้นหา Tracking, สินค้า, ผู้รับ, จังหวัด..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff' }} />
+                <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={{ padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff' }}>
+                  <option value="ทั้งหมด">ประเภท: ทั้งหมด</option>
+                  <option value="รับเข้า (Inbound)">รับเข้า (Inbound)</option>
+                  <option value="เบิกออก (Outbound)">เบิกออก (Outbound)</option>
+                </select>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', marginBottom: '15px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '5px' }}>เบอร์โทรผู้รับ</label>
-                  <input type="text" placeholder="0812345678" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '5px' }}>เลือกจังหวัดปลายทาง (77 จังหวัด)</label>
-                  <select value={formData.destinationProvince} onChange={e => setFormData({...formData, destinationProvince: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }}>
-                    {THAI_PROVINCES.map(prov => <option key={prov} value={prov}>{prov}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '5px' }}>สถานะเริ่มต้น</label>
-                  <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }}>
-                    <option value="รับเข้าคลังหลัก (สโตร์)">รับเข้าคลังหลัก (สโตร์)</option>
-                    <option value="กำลังกระจายส่ง">กำลังกระจายส่ง</option>
-                  </select>
-                </div>
-              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #334155', color: '#94a3b8', fontSize: '13px' }}>
+                    <th style={{ padding: '10px' }}>Tracking / ประเภท</th>
+                    <th style={{ padding: '10px' }}>สินค้า / จำนวน</th>
+                    <th style={{ padding: '10px' }}>ผู้รับ / ผู้เบิก</th>
+                    <th style={{ padding: '10px' }}>สถานะ</th>
+                    <th style={{ padding: '10px', textAlign: 'center' }}>จัดการ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredParcels.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" style={{ textAlign: 'center', padding: '30px', color: '#777' }}>ไม่พบข้อมูลรายการ</td>
+                    </tr>
+                  ) : (
+                    filteredParcels.map(item => (
+                      <tr key={item.id} style={{ borderBottom: '1px solid #1e293b', fontSize: '14px' }}>
+                        <td style={{ padding: '12px' }}>
+                          <div style={{ fontWeight: 'bold', color: '#38bdf8' }}>{item.trackingId}</div>
+                          <span style={{ 
+                            display: 'inline-block', marginTop: '3px', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold',
+                            background: item.transactionType?.includes('รับเข้า') ? '#065f46' : '#9a3412',
+                            color: '#fff'
+                          }}>
+                            {item.transactionType || 'รับเข้า (Inbound)'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px' }}>
+                          <div style={{ fontWeight: 'bold' }}>{item.productName}</div>
+                          <div style={{ fontSize: '12px', color: '#94a3b8' }}>จำนวน: {item.quantity} ชิ้น</div>
+                        </td>
+                        <td style={{ padding: '12px' }}>
+                          <div>{item.recipient}</div>
+                          <div style={{ fontSize: '12px', color: '#94a3b8' }}>จ.{item.destinationProvince}</div>
+                        </td>
+                        <td style={{ padding: '12px' }}>
+                          <span style={{ 
+                            padding: '5px 10px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold',
+                            background: item.status === 'จัดส่งสำเร็จ' ? '#065f46' : item.status === 'กำลังกระจายส่ง' ? '#b45309' : '#1e3a8a' 
+                          }}>
+                            {item.status}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'center' }}>
+                          <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            <button onClick={() => printLabel(item)} style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>🖨️ ปริ้นท์</button>
+                            
+                            <select 
+                              value={item.status} 
+                              onChange={(e) => handleUpdateStatus(item.id, e.target.value)}
+                              style={{ background: '#0f172a', color: '#fff', border: '1px solid #334155', padding: '5px', borderRadius: '4px', fontSize: '12px' }}
+                            >
+                              <option value="รับเข้าคลังหลัก (สโตร์)">รับเข้าคลัง</option>
+                              <option value="กำลังกระจายส่ง">กำลังกระจายส่ง</option>
+                              <option value="จัดส่งสำเร็จ">จัดส่งสำเร็จ</option>
+                            </select>
 
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '5px' }}>ที่อยู่ปลายทางโดยละเอียด</label>
-                <input type="text" placeholder="บ้านเลขที่, ถนน, ตำบล, อำเภอ" value={formData.addressDetail} onChange={e => setFormData({...formData, addressDetail: e.target.value})} required style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }} />
-              </div>
-
-              <button type="submit" disabled={formLoading} style={{ width: '100%', padding: '12px', background: '#22c55e', color: '#fff', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px' }}>
-                {formLoading ? 'กำลังบันทึก...' : '💾 บันทึกรับเข้าคลัง และพิมพ์ใบปะหน้า (มี QR Code)'}
-              </button>
-            </form>
+                            {(userRole === 'Owner' || userRole === 'Admin') && (
+                              <button onClick={() => handleDeleteParcel(item.id)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>🗑️ ลบ</button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
+        ) : (
+          <div style={{ background: '#131b2e', padding: '40px', borderRadius: '10px', textAlign: 'center', border: '1px solid #1e293b' }}>
+            <h3 style={{ color: '#38bdf8', marginTop: 0 }}>ยินดีต้อนรับเข้าสู่ระบบ Central Warehouse</h3>
+            <p style={{ color: '#94a3b8', fontSize: '14px' }}>คุณเข้าสู่ระบบด้วยสิทธิ์ผู้ใช้งานทั่วไป (User)</p>
           </div>
         )}
-
-        {/* ตารางแสดงรายการพัสดุ */}
-        <div style={{ background: '#131b2e', padding: '20px', borderRadius: '10px', border: '1px solid #1e293b' }}>
-          <h3 style={{ marginTop: 0, marginBottom: '20px' }}>📋 รายการพัสดุและการกระจายสินค้า ({filteredParcels.length})</h3>
-          
-          <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
-            <input type="text" placeholder="🔍 ค้นหา Tracking, สินค้า, ผู้รับ, จังหวัด..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff' }} />
-            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ padding: '10px', borderRadius: '5px', border: '1px solid #334155', background: '#0f172a', color: '#fff' }}>
-              <option value="ทั้งหมด">สถานะ: ทั้งหมด</option>
-              <option value="รับเข้าคลังหลัก (สโตร์)">รับเข้าคลังหลัก (สโตร์)</option>
-              <option value="กำลังกระจายส่ง">กำลังกระจายส่ง</option>
-              <option value="จัดส่งสำเร็จ">จัดส่งสำเร็จ</option>
-            </select>
-          </div>
-
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid #334155', color: '#94a3b8', fontSize: '13px' }}>
-                <th style={{ padding: '10px' }}>Tracking / สินค้า</th>
-                <th style={{ padding: '10px' }}>ผู้รับ & เบอร์โทร</th>
-                <th style={{ padding: '10px' }}>ปลายทาง (จังหวัด)</th>
-                <th style={{ padding: '10px' }}>สถานะพัสดุ</th>
-                <th style={{ padding: '10px', textAlign: 'center' }}>จัดการ / อัปเดตสถานะ</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredParcels.length === 0 ? (
-                <tr>
-                  <td colSpan="5" style={{ textAlign: 'center', padding: '30px', color: '#777' }}>ไม่พบข้อมูลพัสดุ</td>
-                </tr>
-              ) : (
-                filteredParcels.map(item => (
-                  <tr key={item.id} style={{ borderBottom: '1px solid #1e293b', fontSize: '14px' }}>
-                    <td style={{ padding: '12px' }}>
-                      <div style={{ fontWeight: 'bold', color: '#38bdf8' }}>{item.trackingId}</div>
-                      <div style={{ fontSize: '13px', color: '#fff' }}>📦 {item.productName} (x{item.quantity})</div>
-                    </td>
-                    <td style={{ padding: '12px' }}>
-                      <div>{item.recipient}</div>
-                      <div style={{ fontSize: '12px', color: '#94a3b8' }}>{item.phone || '-'}</div>
-                    </td>
-                    <td style={{ padding: '12px' }}>
-                      <div style={{ fontWeight: 'bold' }}>จ.{item.destinationProvince}</div>
-                      <div style={{ fontSize: '12px', color: '#94a3b8' }}>{item.addressDetail}</div>
-                    </td>
-                    <td style={{ padding: '12px' }}>
-                      <span style={{ 
-                        padding: '5px 10px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold',
-                        background: item.status === 'จัดส่งสำเร็จ' ? '#065f46' : item.status === 'กำลังกระจายส่ง' ? '#b45309' : '#1e3a8a' 
-                      }}>
-                        {item.status}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                        <button onClick={() => printLabel(item)} style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>🖨️ ปริ้นท์ QR</button>
-                        
-                        {userRole !== 'User' && (
-                          <select 
-                            value={item.status} 
-                            onChange={(e) => handleUpdateStatus(item.id, e.target.value)}
-                            style={{ background: '#0f172a', color: '#fff', border: '1px solid #334155', padding: '5px', borderRadius: '4px', fontSize: '12px' }}
-                          >
-                            <option value="รับเข้าคลังหลัก (สโตร์)">รับเข้าคลังหลัก</option>
-                            <option value="กำลังกระจายส่ง">กำลังกระจายส่ง</option>
-                            <option value="จัดส่งสำเร็จ">จัดส่งสำเร็จ</option>
-                          </select>
-                        )}
-
-                        {(userRole === 'Owner' || userRole === 'Admin') && (
-                          <button onClick={() => handleDeleteParcel(item.id)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>🗑️ ลบ</button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
 
       </div>
     </div>

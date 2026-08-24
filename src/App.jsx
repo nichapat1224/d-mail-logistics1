@@ -402,7 +402,7 @@ export default function App() {
 
             <div style={{ display: 'flex', justifyContent: 'center' }}>
               <button type="submit" disabled={formLoading} style={{ padding: '12px 24px', background: '#059669', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', boxShadow: '0 4px 12px rgba(5,150,105,0.3)', transition: 'all 0.2s' }}>
-                {formLoading ? 'กำลังบันทึก...' : '💾 บันทึกรายการ และพิมพ์ใบปะหน้า (พร้อม Barcode & QR)'}
+                {formLoading ? 'กำลังบันทึก...' : '💾 บันทึกรายการ'}
               </button>
             </div>
           </form>

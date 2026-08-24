@@ -325,7 +325,7 @@ export default function App() {
           }}>
             สิทธิ์: {userRole}
           </span>
-          <button onClick={() => signOut(auth)} style={{ background: '#DC2626', color: '#FFFFFF', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>ออกจากระบบ</button>
+          <button onClick={() => signOut(auth)} className="bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-lg cursor-pointer text-xs transition-colors">ออกจากระบบ</button>
         </div>
       </div>
 
@@ -415,7 +415,7 @@ export default function App() {
            
           <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
             <input type="text" placeholder="🔍 ค้นหา Tracking, สินค้า, ผู้รับ, จังหวัด..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ flex: 1, padding: '11px 14px', borderRadius: '8px', border: '1px solid #CBD5E1', background: '#F8FAFC', color: '#0F172A', fontWeight: 'bold', fontSize: '13px', outline: 'none' }} />
-            <select value={typeFilter} onChange={e => setSearchTerm(e.target.value)} style={{ padding: '11px 14px', borderRadius: '8px', border: '1px solid #CBD5E1', background: '#F8FAFC', color: '#0F172A', fontWeight: 'bold', fontSize: '13px', outline: 'none' }}>
+            <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={{ padding: '11px 14px', borderRadius: '8px', border: '1px solid #CBD5E1', background: '#F8FAFC', color: '#0F172A', fontWeight: 'bold', fontSize: '13px', outline: 'none' }}>
               <option value="ทั้งหมด">ประเภท: ทั้งหมด</option>
               <option value="รับเข้า (Inbound)">รับเข้า (Inbound)</option>
               <option value="เบิกออก (Outbound)">เบิกออก (Outbound)</option>
@@ -496,4 +496,4 @@ export default function App() {
     </div>
   </div>
   );
-}ฆ
+}

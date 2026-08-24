@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import JsBarcode from 'jsbarcode';
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { 
@@ -135,11 +134,7 @@ export default function App() {
 
   const printLabel = (item) => {
     const printWindow = window.open('', '_blank', 'width=500,height=650');
-    const svgNode = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    if (typeof JsBarcode === 'function') {
-      JsBarcode(svgNode, item.trackingId, { format: "CODE128", width: 2, height: 40, displayValue: true });
-    }
-     
+    const barcodeUrl = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${item.trackingId}&scale=2&height=12&includetext=true`;
     const trackingUrl = `https://d-mail-logistics.firebaseapp.com/?track=${item.trackingId}`;
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodeURIComponent(trackingUrl)}`;
 
@@ -151,7 +146,7 @@ export default function App() {
             body { font-family: sans-serif; text-align: center; padding: 15px; color: #000; }
             .label { border: 2px solid #000; padding: 15px; width: 300px; margin: auto; text-align: left; background: #fff; }
             .barcode { text-align: center; margin-bottom: 8px; }
-            .barcode svg { width: 100%; height: auto; }
+            .barcode img { max-width: 100%; height: auto; }
             button { margin-top: 15px; padding: 10px 20px; cursor: pointer; background: #0284c7; color: #fff; border: none; border-radius: 4px; font-size: 15px; }
           </style>
         </head>
@@ -159,7 +154,7 @@ export default function App() {
           <div class="label">
             <h3 style="text-align:center; margin:0 0 8px 0;">CENTRAL WAREHOUSE</h3>
             <div style="text-align:center; font-weight:bold; font-size:14px; margin-bottom:6px; color:${item.transactionType?.includes('รับเข้า') ? '#16a34a' : '#ea580c'};">[ ${item.transactionType} ]</div>
-            <div class="barcode">${svgNode.outerHTML}</div>
+            <div class="barcode"><img src="${barcodeUrl}" alt="Barcode" /></div>
             <p style="margin:4px 0;"><strong>Tracking:</strong> ${item.trackingId}</p>
             <p style="margin:4px 0;"><strong>สินค้า:</strong> ${item.productName} (จำนวน: ${item.quantity})</p>
             <p style="margin:4px 0;"><strong>ผู้รับ/ผู้เบิก:</strong> ${item.recipient} (${item.phone || '-'})</p>

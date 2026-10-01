@@ -77,7 +77,6 @@ export default function App() {
             setUserRole(userSnap.data().role); 
             setShowRoleSelector(false); 
           } else { 
-            // ถ้าสมัครใหม่แล้วยังไม่มี role ให้บังคับโชว์หน้าเลือกสิทธิ์
             setShowRoleSelector(true); 
           }
         } catch (err) {
@@ -118,29 +117,50 @@ export default function App() {
     setAuthError('');
     try {
       if (isRegistering) {
-        // สมัครสมาชิก
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        // บังคับเปลี่ยนสถานะในเครื่องให้เปิดหน้าเลือกสิทธิ์ทันทีโดยไม่ต้องรอ onAuthStateChanged วนลูป
-        setCurrentUser(userCredential.user);
+        const newUser = userCredential.user;
+        
+        await setDoc(doc(db, "users", newUser.uid), { 
+          email: newUser.email, 
+          role: null, 
+          createdAt: serverTimestamp() 
+        });
+
+        setCurrentUser(newUser);
+        setUserRole(null);
         setShowRoleSelector(true);
         showToast('สมัครสมาชิกสำเร็จ! กรุณาเลือกสิทธิ์การใช้งาน');
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
     } catch (err) { 
+      console.error("Auth Error:", err);
       setAuthError(isRegistering ? 'ไม่สามารถสมัครสมาชิกได้ (อีเมลอาจซ้ำหรือรหัสผ่านสั้นเกินไป)' : 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'); 
     }
   };
 
+  // แก้ไขฟังก์ชันเลือกสิทธิ์ให้กดทำงานได้ชัวร์ 100%
   const selectRole = async (role) => {
-    if (!currentUser) return;
+    const activeUser = currentUser || auth.currentUser;
+    
+    if (!activeUser) {
+      showToast('ไม่พบข้อมูลผู้ใช้งาน กรุณาเข้าสู่ระบบใหม่อีกครั้ง');
+      return;
+    }
+
     try {
-      await setDoc(doc(db, "users", currentUser.uid), { role, email: currentUser.email }, { merge: true });
+      await setDoc(doc(db, "users", activeUser.uid), { 
+        role: role, 
+        email: activeUser.email,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+
       setUserRole(role);
       setShowRoleSelector(false);
       showToast(`กำหนดสิทธิ์เป็น ${role} สำเร็จ`);
     } catch (err) {
-      setAuthError(err.message);
+      console.error("Error setting role:", err);
+      setAuthError('เกิดข้อผิดพลาดในการบันทึกสิทธิ์: ' + err.message);
     }
   };
 
@@ -255,7 +275,6 @@ export default function App() {
     );
   }
 
-  // หน้าจอเลือกบทบาท (Role Selector) จะแสดงขึ้นมาทันทีเมื่อสมัครสมาชิกหรือยังไม่กำหนดสิทธิ์
   if (currentUser && showRoleSelector) {
     return (
       <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%)', color: '#0f172a', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif' }}>
@@ -454,7 +473,7 @@ export default function App() {
           
           <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
             <input type="text" placeholder="🔍 ค้นหา Tracking, สินค้า, ผู้รับ, จังหวัด..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ flex: 1, padding: '11px 14px', borderRadius: '8px', border: '1px solid #bae6fd', background: '#f8fafc', color: '#0f172a', fontSize: '14px', outline: 'none' }} />
-            <select value={typeFilter} onChange={e => setSearchType(e.target.value)} style={{ padding: '11px 14px', borderRadius: '8px', border: '1px solid #bae6fd', background: '#f8fafc', color: '#0f172a', fontSize: '14px', outline: 'none' }}>
+            <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={{ padding: '11px 14px', borderRadius: '8px', border: '1px solid #bae6fd', background: '#f8fafc', color: '#0f172a', fontSize: '14px', outline: 'none' }}>
               <option value="ทั้งหมด">ประเภท: ทั้งหมด</option>
               <option value="รับเข้า (Inbound)">รับเข้า (Inbound)</option>
               <option value="เบิกออก (Outbound)">เบิกออก (Outbound)</option>

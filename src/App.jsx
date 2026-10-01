@@ -131,6 +131,7 @@ export default function App() {
     showToast(`เข้าสู่ระบบในฐานะ ${role} สำเร็จ`);
   };
 
+  // ปรับหน้าต่างพิมพ์ใบปะหน้าให้ตรงกับรูปต้นฉบับเป๊ะๆ
   const printLabel = (item) => {
     const printWindow = window.open('', '_blank', 'width=500,height=650');
     if (!printWindow) {
@@ -146,26 +147,33 @@ export default function App() {
         <head>
           <title>Warehouse Label - ${item.trackingId}</title>
           <style>
-            body { font-family: sans-serif; text-align: center; padding: 15px; color: #0f172a; }
-            .label { border: 2px solid #bae6fd; padding: 15px; width: 300px; margin: auto; text-align: left; background: #ffffff; border-radius: 8px; }
-            .barcode { text-align: center; margin-bottom: 8px; }
+            body { font-family: sans-serif; text-align: center; padding: 20px; color: #0f172a; background: #fff; }
+            .label { border: 2px solid #cbd5e1; padding: 20px; width: 340px; margin: auto; text-align: left; background: #ffffff; border-radius: 8px; }
+            .title { text-align: center; font-weight: bold; font-size: 18px; color: #0f172a; margin-bottom: 4px; letter-spacing: 0.5px; }
+            .sub-title { text-align: center; font-weight: bold; font-size: 15px; margin-bottom: 12px; color: #0f172a; }
+            .barcode { text-align: center; margin-bottom: 12px; }
             .barcode img { max-width: 100%; height: auto; }
-            button { margin-top: 15px; padding: 12px 20px; cursor: pointer; background: #0284c7; color: #fff; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; }
+            .info { font-size: 14px; margin-bottom: 6px; line-height: 1.4; color: #000; }
+            .qr-section { text-align: center; margin-top: 15px; }
+            .qr-section img { width: 90px; height: 90px; }
+            .qr-text { font-size: 11px; color: #000; margin-top: 3px; font-weight: bold; }
+            button { margin-top: 20px; padding: 10px 20px; cursor: pointer; background: #0284c7; color: #fff; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; display: block; margin-left: auto; margin-right: auto; }
+            @media print { button { display: none; } }
           </style>
         </head>
         <body>
           <div class="label">
-            <h3 style="text-align:center; margin:0 0 8px 0; font-size: 16px; color: #0369a1;">CENTRAL WAREHOUSE</h3>
-            <div style="text-align:center; font-weight:bold; font-size:15px; margin-bottom:6px; color:${item.transactionType?.includes('รับเข้า') ? '#0d9488' : '#c2410c'};">[ ${item.transactionType} ]</div>
+            <div class="title">CENTRAL WAREHOUSE</div>
+            <div class="sub-title">[ ${item.transactionType} ]</div>
             <div class="barcode"><img src="${barcodeUrl}" alt="Barcode" /></div>
-            <p style="margin:6px 0; font-size:13px;"><strong>Tracking:</strong> ${item.trackingId}</p>
-            <p style="margin:6px 0; font-size:13px;"><strong>สินค้า:</strong> ${item.productName} (จำนวน: ${item.quantity})</p>
-            <p style="margin:6px 0; font-size:13px;"><strong>ผู้รับ/ผู้เบิก:</strong> ${item.recipient} (${item.phone || '-'})</p>
-            <p style="margin:6px 0; font-size:13px;"><strong>ปลายทาง/หน่วยงาน:</strong> ${item.addressDetail} จ.${item.destinationProvince}</p>
-            <p style="margin:6px 0; font-size:13px;"><strong>สถานะ:</strong> ${item.status}</p>
-            <div style="text-align:center; margin-top:10px;">
-              <img src="${qrCodeUrl}" width="85" alt="QR Code" />
-              <div style="font-size: 10px; color: #64748b; margin-top: 2px; font-weight: bold;">สแกนเพื่อเช็คสถานะ</div>
+            <div class="info"><strong>Tracking:</strong> ${item.trackingId}</div>
+            <div class="info"><strong>สินค้า:</strong> ${item.productName} (จำนวน: ${item.quantity})</div>
+            <div class="info"><strong>ผู้รับ/ผู้เบิก:</strong> ${item.recipient} (${item.phone || '-'})</div>
+            <div class="info"><strong>ปลายทาง/หน่วยงาน:</strong> ${item.addressDetail} จ.${item.destinationProvince}</div>
+            <div class="info"><strong>สถานะ:</strong> ${item.status}</div>
+            <div class="qr-section">
+              <img src="${qrCodeUrl}" alt="QR Code" />
+              <div class="qr-text">สแกนเพื่อเช็คสถานะ</div>
             </div>
           </div>
           <button onclick="window.print()">🖨️ สั่งพิมพ์ใบปะหน้า</button>
@@ -246,32 +254,21 @@ export default function App() {
     return (
       <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%)', color: '#0f172a', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif' }}>
         <div style={{ background: '#ffffff', padding: '40px', borderRadius: '16px', width: '400px', textAlign: 'center', border: '1px solid #bae6fd', boxShadow: '0 10px 25px -5px rgba(2, 132, 199, 0.1)' }}>
-          
           <div style={{ display: 'inline-block', background: '#e0f2fe', color: '#0369a1', padding: '6px 16px', borderRadius: '20px', fontSize: '13px', marginBottom: '15px', fontWeight: 'bold' }}>
             ● กำหนดสิทธิ์การใช้งาน
           </div>
-          
           <h2 style={{ color: '#0369a1', margin: '0 0 10px 0', fontSize: '22px', fontWeight: 'bold' }}>เลือกบทบาทของคุณ</h2>
           <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '30px', fontWeight: 'bold' }}>กรุณาเลือกบทบาทที่ต้องการใช้งานในระบบคลังพัสดุ</p>
-          
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <button 
-              onClick={() => selectRole('Admin')} 
-              style={{ width: '100%', padding: '14px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)', transition: 'background 0.2s' }}
-            >
-              🛡️ Admin (ผู้ดูแลระบบ)
+            <button onClick={() => selectRole('Admin')} style={{ width: '100%', padding: '14px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)' }}>
+              🛡️️ Admin (ผู้ดูแลระบบ)
               <div style={{ fontSize: '12px', fontWeight: 'normal', opacity: '0.9', marginTop: '3px' }}>จัดการข้อมูลทั้งหมด และลบรายการได้</div>
             </button>
-            
-            <button 
-              onClick={() => selectRole('Staff')} 
-              style={{ width: '100%', padding: '14px', background: '#0d9488', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px', boxShadow: '0 4px 12px rgba(13, 148, 136, 0.25)', transition: 'background 0.2s' }}
-            >
+            <button onClick={() => selectRole('Staff')} style={{ width: '100%', padding: '14px', background: '#0d9488', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px', boxShadow: '0 4px 12px rgba(13, 148, 136, 0.25)' }}>
               👷 Staff (เจ้าหน้าที่)
               <div style={{ fontSize: '12px', fontWeight: 'normal', opacity: '0.9', marginTop: '3px' }}>บันทึกรายการ, ปริ้นท์ป้าย และอัปเดตสถานะ</div>
             </button>
           </div>
-
         </div>
       </div>
     );
@@ -290,9 +287,7 @@ export default function App() {
           <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '25px', fontWeight: 'bold' }}>
             {isRegistering ? 'กรอกข้อมูลเพื่อสมัครสมาชิกใหม่' : 'กรุณาเข้าสู่ระบบเพื่อใช้งาน'}
           </p>
-
           {authError && <div style={{ color: '#ef4444', marginBottom: '15px', fontSize: '14px', fontWeight: 'bold' }}>{authError}</div>}
-          
           <form onSubmit={handleAuthSubmit} style={{ textAlign: 'left' }}>
             <div style={{ marginBottom: '18px' }}>
               <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#475569', fontWeight: 'bold' }}>อีเมล</label>
@@ -302,11 +297,10 @@ export default function App() {
               <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#475569', fontWeight: 'bold' }}>รหัสผ่าน</label>
               <input type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid #bae6fd', background: '#f8fafc', color: '#0f172a', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }} />
             </div>
-            <button type="submit" style={{ width: '100%', padding: '12px', background: isRegistering ? '#0d9488' : '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)', transition: 'background 0.2s' }}>
+            <button type="submit" style={{ width: '100%', padding: '12px', background: isRegistering ? '#0d9488' : '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)' }}>
               {isRegistering ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}
             </button>
           </form>
-
           <div style={{ marginTop: '20px', fontSize: '14px', color: '#64748b' }}>
             {isRegistering ? (
               <span>มีบัญชีอยู่แล้ว? <button onClick={() => setIsRegistering(false)} style={{ background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', fontWeight: 'bold', padding: 0, fontSize: '14px', textDecoration: 'underline' }}>เข้าสู่ระบบ</button></span>
@@ -314,7 +308,6 @@ export default function App() {
               <span>ยังไม่มีบัญชีผู้ใช้งาน? <button onClick={() => setIsRegistering(true)} style={{ background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', fontWeight: 'bold', padding: 0, fontSize: '14px', textDecoration: 'underline' }}>สมัครสมาชิก</button></span>
             )}
           </div>
-
         </div>
       </div>
     );
@@ -426,7 +419,7 @@ export default function App() {
               <input type="text" placeholder="บ้านเลขที่, อาคาร, แผนก" value={formData.addressDetail} onChange={e => setFormData({...formData, addressDetail: e.target.value})} required style={{ width: '100%', padding: '11px', borderRadius: '8px', border: '1px solid #bae6fd', background: '#f8fafc', color: '#0f172a', boxSizing: 'border-box', fontSize: '14px', outline: 'none' }} />
             </div>
 
-            {/* ปรับขนาดปุ่มบันทึกให้เล็กลงพอดีสวยงาม ไม่ใหญ่จนเกินไป */}
+            {/* ปุ่มบันทึกขนาดพอดีสวยงาม */}
             <div style={{ display: 'flex', justifyContent: 'center' }}>
               <button type="submit" disabled={formLoading} style={{ padding: '8px 20px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', boxShadow: '0 2px 6px rgba(2, 132, 199, 0.2)' }}>
                 {formLoading ? 'กำลังบันทึก...' : '💾 บันทึกรายการ'}

@@ -131,26 +131,26 @@ export default function App() {
     showToast(`เข้าสู่ระบบในฐานะ ${role} สำเร็จ`);
   };
 
-  // ปรับหน้าต่างพิมพ์ใบปะหน้าให้ตรงกับรูปต้นฉบับเป๊ะๆ
   const printLabel = (item) => {
-    const printWindow = window.open('', '_blank', 'width=500,height=650');
+    const barcodeUrl = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${item.trackingId}&scale=2&height=12&includetext=true`;
+    const trackingUrl = `https://d-mail-logistics.firebaseapp.com/?track=${item.trackingId}`;
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodeURIComponent(trackingUrl)}`;
+
+    const printWindow = window.open('', '_blank');
     if (!printWindow) {
       showToast('กรุณาอนุญาตให้เบราว์เซอร์เปิดหน้าต่างป๊อปอัป (Popup)');
       return;
     }
-    const barcodeUrl = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${item.trackingId}&scale=2&height=12&includetext=true`;
-    const trackingUrl = `https://d-mail-logistics.firebaseapp.com/?track=${item.trackingId}`;
-    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodeURIComponent(trackingUrl)}`;
 
     printWindow.document.write(`
       <html>
         <head>
           <title>Warehouse Label - ${item.trackingId}</title>
           <style>
-            body { font-family: sans-serif; text-align: center; padding: 20px; color: #0f172a; background: #fff; }
-            .label { border: 2px solid #cbd5e1; padding: 20px; width: 340px; margin: auto; text-align: left; background: #ffffff; border-radius: 8px; }
-            .title { text-align: center; font-weight: bold; font-size: 18px; color: #0f172a; margin-bottom: 4px; letter-spacing: 0.5px; }
-            .sub-title { text-align: center; font-weight: bold; font-size: 15px; margin-bottom: 12px; color: #0f172a; }
+            body { font-family: sans-serif; text-align: center; padding: 20px; color: #000; background: #fff; }
+            .label { border: 2px solid #94a3b8; padding: 20px; width: 340px; margin: auto; text-align: left; background: #ffffff; border-radius: 6px; }
+            .title { text-align: center; font-weight: bold; font-size: 19px; color: #0f172a; margin-bottom: 2px; }
+            .sub-title { text-align: center; font-weight: bold; font-size: 15px; margin-bottom: 10px; color: #0f172a; }
             .barcode { text-align: center; margin-bottom: 12px; }
             .barcode img { max-width: 100%; height: auto; }
             .info { font-size: 14px; margin-bottom: 6px; line-height: 1.4; color: #000; }
@@ -261,7 +261,7 @@ export default function App() {
           <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '30px', fontWeight: 'bold' }}>กรุณาเลือกบทบาทที่ต้องการใช้งานในระบบคลังพัสดุ</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <button onClick={() => selectRole('Admin')} style={{ width: '100%', padding: '14px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)' }}>
-              🛡️️ Admin (ผู้ดูแลระบบ)
+              🛡 Admin (ผู้ดูแลระบบ)
               <div style={{ fontSize: '12px', fontWeight: 'normal', opacity: '0.9', marginTop: '3px' }}>จัดการข้อมูลทั้งหมด และลบรายการได้</div>
             </button>
             <button onClick={() => selectRole('Staff')} style={{ width: '100%', padding: '14px', background: '#0d9488', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px', boxShadow: '0 4px 12px rgba(13, 148, 136, 0.25)' }}>

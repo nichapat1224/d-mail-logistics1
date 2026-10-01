@@ -71,7 +71,6 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setCurrentUser(user);
-        // ถ้าเพิ่งล็อกอินเข้ามา ให้แสดงหน้าเลือกสิทธิ์ทันที
         if (!userRole) {
           setShowRoleSelector(true);
         }
@@ -126,7 +125,6 @@ export default function App() {
     }
   };
 
-  // เลือกสิทธิ์แล้วเข้าหน้าหลักทันที ไม่ติดปัญหา Firebase Rules แน่นอน
   const selectRole = (role) => {
     setUserRole(role);
     setShowRoleSelector(false);
@@ -430,7 +428,7 @@ export default function App() {
 
             <div style={{ display: 'flex', justifyContent: 'center' }}>
               <button type="submit" disabled={formLoading} style={{ padding: '12px 28px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)' }}>
-                {formLoading ? 'กำลังบันทึก...' : '💾 บันทึกรายการ }
+                {formLoading ? 'กำลังบันทึก...' : '💾 บันทึกรายการ'}
               </button>
             </div>
           </form>

@@ -53,6 +53,7 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('ทั้งหมด');
   const [toast, setToast] = useState('');
+  const [printingItem, setPrintingItem] = useState(null); // State สำหรับโหมดหน้าพิมพ์ใบปะหน้า
    
   const [formData, setFormData] = useState({ 
     trackingId: generateTrackingId(), 
@@ -131,65 +132,6 @@ export default function App() {
     showToast(`เข้าสู่ระบบในฐานะ ${role} สำเร็จ`);
   };
 
-  const printLabel = (item) => {
-    const barcodeUrl = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${item.trackingId}&scale=2&height=12&includetext=true`;
-    const trackingUrl = `https://d-mail-logistics.firebaseapp.com/?track=${item.trackingId}`;
-    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodeURIComponent(trackingUrl)}`;
-
-    const printWindow = window.open('', '_blank', 'width=400,height=600');
-    if (!printWindow) {
-      showToast('กรุณาอนุญาต Pop-up ในเบราว์เซอร์เพื่อพิมพ์ใบปะหน้า');
-      return;
-    }
-
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Warehouse Label - ${item.trackingId}</title>
-          <style>
-            body { font-family: sans-serif; text-align: center; padding: 20px; color: #000; background: #fff; }
-            .label { border: 2px solid #94a3b8; padding: 20px; width: 340px; margin: auto; text-align: left; background: #ffffff; border-radius: 6px; }
-            .title { text-align: center; font-weight: bold; font-size: 19px; color: #0f172a; margin-bottom: 2px; }
-            .sub-title { text-align: center; font-weight: bold; font-size: 15px; margin-bottom: 10px; color: #0f172a; }
-            .barcode { text-align: center; margin-bottom: 12px; }
-            .barcode img { max-width: 100%; height: auto; }
-            .info { font-size: 14px; margin-bottom: 6px; line-height: 1.4; color: #000; }
-            .qr-section { text-align: center; margin-top: 15px; }
-            .qr-section img { width: 90px; height: 90px; }
-            .qr-text { font-size: 11px; color: #000; margin-top: 3px; font-weight: bold; }
-            button { margin-top: 20px; padding: 10px 20px; cursor: pointer; background: #0284c7; color: #fff; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; display: block; margin-left: auto; margin-right: auto; }
-            @media print { button { display: none; } }
-          </style>
-        </head>
-        <body>
-          <div class="label">
-            <div class="title">CENTRAL WAREHOUSE</div>
-            <div class="sub-title">[ ${item.transactionType} ]</div>
-            <div class="barcode"><img src="${barcodeUrl}" alt="Barcode" /></div>
-            <div class="info"><strong>Tracking:</strong> ${item.trackingId}</div>
-            <div class="info"><strong>สินค้า:</strong> ${item.productName} (จำนวน: ${item.quantity})</div>
-            <div class="info"><strong>ผู้รับ/ผู้เบิก:</strong> ${item.recipient} (${item.phone || '-'})</div>
-            <div class="info"><strong>ปลายทาง/หน่วยงาน:</strong> ${item.addressDetail} จ.${item.destinationProvince}</div>
-            <div class="info"><strong>สถานะ:</strong> ${item.status}</div>
-            <div class="qr-section">
-              <img src="${qrCodeUrl}" alt="QR Code" />
-              <div class="qr-text">สแกนเพื่อเช็คสถานะ</div>
-            </div>
-          </div>
-          <button onclick="window.print()">🖨️ สั่งพิมพ์ใบปะหน้า</button>
-          <script>
-            window.onload = function() {
-              setTimeout(function() {
-                window.print();
-              }, 500);
-            };
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-  };
-
   const handleSaveParcel = async (e) => {
     e.preventDefault();
     if (!formData.productName || !formData.recipient || !formData.addressDetail) {
@@ -206,8 +148,11 @@ export default function App() {
     setFormLoading(true);
     try {
       const docRef = await addDoc(collection(db, "warehouse_parcels"), newParcelData);
-      printLabel({ ...newParcelData, id: docRef.id });
       showToast(`บันทึกรายการ "${formData.transactionType}" สำเร็จ!`);
+      
+      // เปิดหน้าพิมพ์ใบปะหน้าทันทีหลังจากบันทึกสำเร็จ
+      setPrintingItem({ ...newParcelData, id: docRef.id });
+
       setFormData({ 
         trackingId: generateTrackingId(), 
         transactionType: 'รับเข้า (Inbound)',
@@ -315,6 +260,49 @@ export default function App() {
               <span>ยังไม่มีบัญชีผู้ใช้งาน? <button onClick={() => setIsRegistering(true)} style={{ background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', fontWeight: 'bold', padding: 0, fontSize: '14px', textDecoration: 'underline' }}>สมัครสมาชิก</button></span>
             )}
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // หน้าแสดงผลสำหรับพิมพ์ใบปะหน้า (ไม่โดนบล็อก Pop-up)
+  if (printingItem) {
+    const barcodeUrl = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${printingItem.trackingId}&scale=2&height=12&includetext=true`;
+    const trackingUrl = `https://d-mail-logistics.firebaseapp.com/?track=${printingItem.trackingId}`;
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodeURIComponent(trackingUrl)}`;
+
+    return (
+      <div style={{ background: '#f8fafc', minHeight: '100vh', padding: '40px 20px', textAlign: 'center', fontFamily: 'sans-serif', color: '#0f172a' }}>
+        <style dangerouslySetInnerHTML={{__html: `
+          @media print {
+            body { background: #ffffff !important; }
+            .no-print { display: none !important; }
+            .print-container { border: none !important; box-shadow: none !important; margin: 0 !important; width: 100% !important; }
+          }
+        `}} />
+        
+        <div className="print-container" style={{ border: '2px solid #94a3b8', padding: '24px', width: '340px', margin: '0 auto 24px auto', textAlign: 'left', background: '#ffffff', borderRadius: '6px' }}>
+          <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '19px', color: '#0f172a', marginBottom: '2px' }}>CENTRAL WAREHOUSE</div>
+          <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '15px', marginBottom: '10px', color: '#0f172a' }}>[ {printingItem.transactionType} ]</div>
+          <div style={{ textAlign: 'center', marginBottom: '12px' }}><img src={barcodeUrl} alt="Barcode" style={{ maxWidth: '100%', height: 'auto' }} /></div>
+          <div style={{ fontSize: '14px', marginBottom: '6px', lineHeight: '1.4' }}><strong>Tracking:</strong> {printingItem.trackingId}</div>
+          <div style={{ fontSize: '14px', marginBottom: '6px', lineHeight: '1.4' }}><strong>สินค้า:</strong> {printingItem.productName} (จำนวน: {printingItem.quantity})</div>
+          <div style={{ fontSize: '14px', marginBottom: '6px', lineHeight: '1.4' }}><strong>ผู้รับ/ผู้เบิก:</strong> {printingItem.recipient} ({printingItem.phone || '-'})</div>
+          <div style={{ fontSize: '14px', marginBottom: '6px', lineHeight: '1.4' }}><strong>ปลายทาง/หน่วยงาน:</strong> {printingItem.addressDetail} จ.{printingItem.destinationProvince}</div>
+          <div style={{ fontSize: '14px', marginBottom: '6px', lineHeight: '1.4' }}><strong>สถานะ:</strong> {printingItem.status}</div>
+          <div style={{ textAlign: 'center', marginTop: '15px' }}>
+            <img src={qrCodeUrl} alt="QR Code" style={{ width: '90px', height: '90px' }} />
+            <div style={{ fontSize: '11px', color: '#000', marginTop: '3px', fontWeight: 'bold' }}>สแกนเพื่อเช็คสถานะ</div>
+          </div>
+        </div>
+
+        <div className="no-print" style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
+          <button onClick={() => window.print()} style={{ padding: '10px 20px', cursor: 'pointer', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '15px', fontWeight: 'bold' }}>
+            🖨️ สั่งพิมพ์ใบปะหน้า
+          </button>
+          <button onClick={() => setPrintingItem(null)} style={{ padding: '10px 20px', cursor: 'pointer', background: '#64748b', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '15px', fontWeight: 'bold' }}>
+            ⬅️ กลับสู่หน้าหลัก
+          </button>
         </div>
       </div>
     );
@@ -428,7 +416,7 @@ export default function App() {
 
             <div style={{ display: 'flex', justifyContent: 'center' }}>
               <button type="submit" disabled={formLoading} style={{ padding: '8px 20px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', boxShadow: '0 2px 6px rgba(2, 132, 199, 0.2)' }}>
-                {formLoading ? 'กำลังบันทึก...' : '💾 บันทึกรายการ'}
+                {formLoading ? 'กำลังบันทึก...' : '💾 บันทึกและพิมพ์ใบปะหน้า'}
               </button>
             </div>
           </form>
@@ -494,7 +482,7 @@ export default function App() {
                     </td>
                     <td style={{ padding: '12px', textAlign: 'center' }}>
                       <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                        <button onClick={() => printLabel(item)} style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '7px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>🖨️ ปริ้นท์</button>
+                        <button onClick={() => setPrintingItem(item)} style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '7px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>🖨️ ปริ้นท์</button>
                          
                         <select 
                           value={item.status} 

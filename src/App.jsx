@@ -44,16 +44,16 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [showRoleSelector, setShowRoleSelector] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
-    
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
-    
+  
   const [parcels, setParcels] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('ทั้งหมด');
   const [toast, setToast] = useState('');
-    
+  
   const [formData, setFormData] = useState({ 
     trackingId: generateTrackingId(), 
     transactionType: 'รับเข้า (Inbound)',
@@ -77,11 +77,12 @@ export default function App() {
             setUserRole(userSnap.data().role); 
             setShowRoleSelector(false); 
           } else { 
-            setUserRole(null);
+            // ถ้าสมัครใหม่แล้วยังไม่มี role ให้บังคับโชว์หน้าเลือกสิทธิ์
             setShowRoleSelector(true); 
           }
         } catch (err) {
           console.error("Error fetching user role:", err);
+          setShowRoleSelector(true);
         }
       } else { 
         setCurrentUser(null); 
@@ -94,7 +95,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || showRoleSelector) return;
     const q = query(collection(db, "warehouse_parcels"), orderBy("createdAt", "desc"));
     const unsubscribeParcels = onSnapshot(q, (snapshot) => {
       setParcels(snapshot.docs.map(docSnap => ({ 
@@ -105,7 +106,7 @@ export default function App() {
       console.error("Error fetching parcels:", error);
     });
     return () => unsubscribeParcels();
-  }, [currentUser]);
+  }, [currentUser, showRoleSelector]);
 
   const showToast = (message) => { 
     setToast(message); 
@@ -117,13 +118,11 @@ export default function App() {
     setAuthError('');
     try {
       if (isRegistering) {
-        // สมัครสมาชิกและสร้าง Document เปล่าใน Firestore เพื่อบังคับให้ไปหน้าเลือกสิทธิ์
+        // สมัครสมาชิก
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        await setDoc(doc(db, "users", userCredential.user.uid), {
-          email: userCredential.user.email,
-          role: null,
-          createdAt: serverTimestamp()
-        });
+        // บังคับเปลี่ยนสถานะในเครื่องให้เปิดหน้าเลือกสิทธิ์ทันทีโดยไม่ต้องรอ onAuthStateChanged วนลูป
+        setCurrentUser(userCredential.user);
+        setShowRoleSelector(true);
         showToast('สมัครสมาชิกสำเร็จ! กรุณาเลือกสิทธิ์การใช้งาน');
       } else {
         await signInWithEmailAndPassword(auth, email, password);
@@ -256,51 +255,8 @@ export default function App() {
     );
   }
 
-  if (!currentUser) {
-    return (
-      <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%)', color: '#0f172a', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif' }}>
-        <div style={{ background: '#ffffff', padding: '40px', borderRadius: '16px', width: '420px', boxShadow: '0 10px 25px -5px rgba(2, 132, 199, 0.1)', border: '1px solid #bae6fd', textAlign: 'center' }}>
-          <div style={{ display: 'inline-block', background: '#e0f2fe', color: '#0369a1', padding: '6px 16px', borderRadius: '20px', fontSize: '13px', marginBottom: '20px', fontWeight: 'bold' }}>
-            ● ระบบจัดการคลังสินค้า
-          </div>
-          <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 8px 0', color: '#0369a1', letterSpacing: '0.5px' }}>
-            CENTRAL WAREHOUSE
-          </h1>
-          <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '25px', fontWeight: 'bold' }}>
-            {isRegistering ? 'กรอกข้อมูลเพื่อสมัครสมาชิกใหม่' : 'กรุณาเข้าสู่ระบบเพื่อใช้งาน'}
-          </p>
-
-          {authError && <div style={{ color: '#ef4444', marginBottom: '15px', fontSize: '14px', fontWeight: 'bold' }}>{authError}</div>}
-           
-          <form onSubmit={handleAuthSubmit} style={{ textAlign: 'left' }}>
-            <div style={{ marginBottom: '18px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#475569', fontWeight: 'bold' }}>อีเมล</label>
-              <input type="email" placeholder="user@gmail.com" value={email} onChange={e => setEmail(e.target.value)} required style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid #bae6fd', background: '#f8fafc', color: '#0f172a', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }} />
-            </div>
-            <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#475569', fontWeight: 'bold' }}>รหัสผ่าน</label>
-              <input type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid #bae6fd', background: '#f8fafc', color: '#0f172a', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }} />
-            </div>
-            <button type="submit" style={{ width: '100%', padding: '12px', background: isRegistering ? '#0d9488' : '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)', transition: 'background 0.2s' }}>
-              {isRegistering ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}
-            </button>
-          </form>
-
-          <div style={{ marginTop: '20px', fontSize: '14px', color: '#64748b' }}>
-            {isRegistering ? (
-              <span>มีบัญชีอยู่แล้ว? <button onClick={() => setIsRegistering(false)} style={{ background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', fontWeight: 'bold', padding: 0, fontSize: '14px', textDecoration: 'underline' }}>เข้าสู่ระบบ</button></span>
-            ) : (
-              <span>ยังไม่มีบัญชีผู้ใช้งาน? <button onClick={() => setIsRegistering(true)} style={{ background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', fontWeight: 'bold', padding: 0, fontSize: '14px', textDecoration: 'underline' }}>สมัครสมาชิก</button></span>
-            )}
-          </div>
-
-        </div>
-      </div>
-    );
-  }
-
-  // หน้าจอเลือกบทบาท (Role Selector)
-  if (showRoleSelector) {
+  // หน้าจอเลือกบทบาท (Role Selector) จะแสดงขึ้นมาทันทีเมื่อสมัครสมาชิกหรือยังไม่กำหนดสิทธิ์
+  if (currentUser && showRoleSelector) {
     return (
       <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%)', color: '#0f172a', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif' }}>
         <div style={{ background: '#ffffff', padding: '40px', borderRadius: '16px', width: '400px', textAlign: 'center', border: '1px solid #bae6fd', boxShadow: '0 10px 25px -5px rgba(2, 132, 199, 0.1)' }}>
@@ -328,6 +284,49 @@ export default function App() {
               👷 Staff (เจ้าหน้าที่)
               <div style={{ fontSize: '12px', fontWeight: 'normal', opacity: '0.9', marginTop: '3px' }}>บันทึกรายการ, ปริ้นท์ป้าย และอัปเดตสถานะ</div>
             </button>
+          </div>
+
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%)', color: '#0f172a', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif' }}>
+        <div style={{ background: '#ffffff', padding: '40px', borderRadius: '16px', width: '420px', boxShadow: '0 10px 25px -5px rgba(2, 132, 199, 0.1)', border: '1px solid #bae6fd', textAlign: 'center' }}>
+          <div style={{ display: 'inline-block', background: '#e0f2fe', color: '#0369a1', padding: '6px 16px', borderRadius: '20px', fontSize: '13px', marginBottom: '20px', fontWeight: 'bold' }}>
+            ● ระบบจัดการคลังสินค้า
+          </div>
+          <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 8px 0', color: '#0369a1', letterSpacing: '0.5px' }}>
+            CENTRAL WAREHOUSE
+          </h1>
+          <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '25px', fontWeight: 'bold' }}>
+            {isRegistering ? 'กรอกข้อมูลเพื่อสมัครสมาชิกใหม่' : 'กรุณาเข้าสู่ระบบเพื่อใช้งาน'}
+          </p>
+
+          {authError && <div style={{ color: '#ef4444', marginBottom: '15px', fontSize: '14px', fontWeight: 'bold' }}>{authError}</div>}
+          
+          <form onSubmit={handleAuthSubmit} style={{ textAlign: 'left' }}>
+            <div style={{ marginBottom: '18px' }}>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#475569', fontWeight: 'bold' }}>อีเมล</label>
+              <input type="email" placeholder="user@gmail.com" value={email} onChange={e => setEmail(e.target.value)} required style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid #bae6fd', background: '#f8fafc', color: '#0f172a', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }} />
+            </div>
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#475569', fontWeight: 'bold' }}>รหัสผ่าน</label>
+              <input type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid #bae6fd', background: '#f8fafc', color: '#0f172a', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }} />
+            </div>
+            <button type="submit" style={{ width: '100%', padding: '12px', background: isRegistering ? '#0d9488' : '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)', transition: 'background 0.2s' }}>
+              {isRegistering ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}
+            </button>
+          </form>
+
+          <div style={{ marginTop: '20px', fontSize: '14px', color: '#64748b' }}>
+            {isRegistering ? (
+              <span>มีบัญชีอยู่แล้ว? <button onClick={() => setIsRegistering(false)} style={{ background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', fontWeight: 'bold', padding: 0, fontSize: '14px', textDecoration: 'underline' }}>เข้าสู่ระบบ</button></span>
+            ) : (
+              <span>ยังไม่มีบัญชีผู้ใช้งาน? <button onClick={() => setIsRegistering(true)} style={{ background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', fontWeight: 'bold', padding: 0, fontSize: '14px', textDecoration: 'underline' }}>สมัครสมาชิก</button></span>
+            )}
           </div>
 
         </div>
@@ -370,7 +369,7 @@ export default function App() {
       </div>
 
       <div style={{ padding: '30px 40px', maxWidth: '1200px', margin: '0 auto' }}>
-         
+        
         {/* สถิติคลังสินค้า */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '30px' }}>
           <div style={{ background: '#ffffff', padding: '22px', borderRadius: '12px', textAlign: 'center', border: '1px solid #bae6fd', boxShadow: '0 1px 3px rgba(2, 132, 199, 0.05)' }}>
@@ -452,10 +451,10 @@ export default function App() {
         {/* ตารางประวัติรายการคลังสินค้า */}
         <div style={{ background: '#ffffff', padding: '28px', borderRadius: '12px', border: '1px solid #bae6fd', boxShadow: '0 1px 3px rgba(2, 132, 199, 0.05)' }}>
           <h3 style={{ marginTop: 0, marginBottom: '20px', color: '#0369a1', fontSize: '17px', fontWeight: 'bold' }}>📋 ประวัติการรับเข้าและเบิกออก ({filteredParcels.length})</h3>
-           
+          
           <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
             <input type="text" placeholder="🔍 ค้นหา Tracking, สินค้า, ผู้รับ, จังหวัด..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ flex: 1, padding: '11px 14px', borderRadius: '8px', border: '1px solid #bae6fd', background: '#f8fafc', color: '#0f172a', fontSize: '14px', outline: 'none' }} />
-            <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={{ padding: '11px 14px', borderRadius: '8px', border: '1px solid #bae6fd', background: '#f8fafc', color: '#0f172a', fontSize: '14px', outline: 'none' }}>
+            <select value={typeFilter} onChange={e => setSearchType(e.target.value)} style={{ padding: '11px 14px', borderRadius: '8px', border: '1px solid #bae6fd', background: '#f8fafc', color: '#0f172a', fontSize: '14px', outline: 'none' }}>
               <option value="ทั้งหมด">ประเภท: ทั้งหมด</option>
               <option value="รับเข้า (Inbound)">รับเข้า (Inbound)</option>
               <option value="เบิกออก (Outbound)">เบิกออก (Outbound)</option>
@@ -510,7 +509,7 @@ export default function App() {
                     <td style={{ padding: '12px', textAlign: 'center' }}>
                       <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
                         <button onClick={() => printLabel(item)} style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '7px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>🖨️ ปริ้นท์</button>
-                         
+                        
                         <select 
                           value={item.status} 
                           onChange={(e) => handleUpdateStatus(item.id, e.target.value)}

@@ -117,8 +117,14 @@ export default function App() {
     setAuthError('');
     try {
       if (isRegistering) {
-        await createUserWithEmailAndPassword(auth, email, password);
-        showToast('สมัครสมาชิกสำเร็จ!');
+        // สมัครสมาชิกและสร้าง Document เปล่าใน Firestore เพื่อบังคับให้ไปหน้าเลือกสิทธิ์
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await setDoc(doc(db, "users", userCredential.user.uid), {
+          email: userCredential.user.email,
+          role: null,
+          createdAt: serverTimestamp()
+        });
+        showToast('สมัครสมาชิกสำเร็จ! กรุณาเลือกสิทธิ์การใช้งาน');
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
@@ -293,7 +299,7 @@ export default function App() {
     );
   }
 
-  // หน้าจอเลือกบทบาท (Role Selector) แบบดีไซน์สวยงาม
+  // หน้าจอเลือกบทบาท (Role Selector)
   if (showRoleSelector) {
     return (
       <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%)', color: '#0f172a', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif' }}>
@@ -437,7 +443,7 @@ export default function App() {
 
             <div style={{ display: 'flex', justifyContent: 'center' }}>
               <button type="submit" disabled={formLoading} style={{ padding: '12px 28px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)' }}>
-                {formLoading ? 'กำลังบันทึก...' : '💾 บันทึกรายการ และพิมพ์ใบปะหน้า (Barcode & QR)'}
+                {formLoading ? 'กำลังบันทึก...' : '💾 บันทึกรายการ '}
               </button>
             </div>
           </form>

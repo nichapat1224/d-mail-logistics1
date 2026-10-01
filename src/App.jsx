@@ -426,8 +426,9 @@ export default function App() {
               <input type="text" placeholder="บ้านเลขที่, อาคาร, แผนก" value={formData.addressDetail} onChange={e => setFormData({...formData, addressDetail: e.target.value})} required style={{ width: '100%', padding: '11px', borderRadius: '8px', border: '1px solid #bae6fd', background: '#f8fafc', color: '#0f172a', boxSizing: 'border-box', fontSize: '14px', outline: 'none' }} />
             </div>
 
+            {/* ปรับขนาดปุ่มบันทึกให้เล็กลงพอดีสวยงาม ไม่ใหญ่จนเกินไป */}
             <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <button type="submit" disabled={formLoading} style={{ padding: '12px 28px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)' }}>
+              <button type="submit" disabled={formLoading} style={{ padding: '8px 20px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', boxShadow: '0 2px 6px rgba(2, 132, 199, 0.2)' }}>
                 {formLoading ? 'กำลังบันทึก...' : '💾 บันทึกรายการ'}
               </button>
             </div>

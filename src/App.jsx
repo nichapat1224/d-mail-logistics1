@@ -293,14 +293,37 @@ export default function App() {
     );
   }
 
+  // หน้าจอเลือกบทบาท (Role Selector) แบบดีไซน์สวยงาม
   if (showRoleSelector) {
     return (
       <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%)', color: '#0f172a', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif' }}>
-        <div style={{ background: '#ffffff', padding: '35px', borderRadius: '16px', width: '380px', textAlign: 'center', border: '1px solid #bae6fd', boxShadow: '0 10px 25px -5px rgba(2, 132, 199, 0.1)' }}>
-          <h2 style={{ color: '#0369a1', margin: '0 0 10px 0', fontSize: '20px' }}>เลือกบทบาทของคุณ</h2>
-          <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '25px' }}>กำหนดสิทธิ์การใช้งานในระบบคลังพัสดุ</p>
-          <button onClick={() => selectRole('Admin')} style={{ width: '100%', padding: '12px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '12px', fontSize: '15px' }}>🛡️ Admin (ผู้ดูแลระบบ)</button>
-          <button onClick={() => selectRole('Staff')} style={{ width: '100%', padding: '12px', background: '#0d9488', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px' }}>👷 Staff (เจ้าหน้าที่)</button>
+        <div style={{ background: '#ffffff', padding: '40px', borderRadius: '16px', width: '400px', textAlign: 'center', border: '1px solid #bae6fd', boxShadow: '0 10px 25px -5px rgba(2, 132, 199, 0.1)' }}>
+          
+          <div style={{ display: 'inline-block', background: '#e0f2fe', color: '#0369a1', padding: '6px 16px', borderRadius: '20px', fontSize: '13px', marginBottom: '15px', fontWeight: 'bold' }}>
+            ● กำหนดสิทธิ์การใช้งาน
+          </div>
+          
+          <h2 style={{ color: '#0369a1', margin: '0 0 10px 0', fontSize: '22px', fontWeight: 'bold' }}>เลือกบทบาทของคุณ</h2>
+          <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '30px', fontWeight: 'bold' }}>กรุณาเลือกบทบาทที่ต้องการใช้งานในระบบคลังพัสดุ</p>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <button 
+              onClick={() => selectRole('Admin')} 
+              style={{ width: '100%', padding: '14px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)', transition: 'background 0.2s' }}
+            >
+              🛡️ Admin (ผู้ดูแลระบบ)
+              <div style={{ fontSize: '12px', fontWeight: 'normal', opacity: '0.9', marginTop: '3px' }}>จัดการข้อมูลทั้งหมด และลบรายการได้</div>
+            </button>
+            
+            <button 
+              onClick={() => selectRole('Staff')} 
+              style={{ width: '100%', padding: '14px', background: '#0d9488', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px', boxShadow: '0 4px 12px rgba(13, 148, 136, 0.25)', transition: 'background 0.2s' }}
+            >
+              👷 Staff (เจ้าหน้าที่)
+              <div style={{ fontSize: '12px', fontWeight: 'normal', opacity: '0.9', marginTop: '3px' }}>บันทึกรายการ, ปริ้นท์ป้าย และอัปเดตสถานะ</div>
+            </button>
+          </div>
+
         </div>
       </div>
     );
@@ -414,7 +437,7 @@ export default function App() {
 
             <div style={{ display: 'flex', justifyContent: 'center' }}>
               <button type="submit" disabled={formLoading} style={{ padding: '12px 28px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)' }}>
-                {formLoading ? 'กำลังบันทึก...' : '💾 บันทึกรายการ'}
+                {formLoading ? 'กำลังบันทึก...' : '💾 บันทึกรายการ และพิมพ์ใบปะหน้า (Barcode & QR)'}
               </button>
             </div>
           </form>

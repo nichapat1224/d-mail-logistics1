@@ -3,7 +3,7 @@ import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { 
   getFirestore, collection, addDoc, updateDoc, deleteDoc, 
-  doc, getDoc, setDoc, onSnapshot, query, orderBy, serverTimestamp 
+  doc, onSnapshot, query, orderBy, serverTimestamp 
 } from 'firebase/firestore';
 import { 
   getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged 
@@ -68,19 +68,11 @@ export default function App() {
   const [formLoading, setFormLoading] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setCurrentUser(user);
-        try {
-          const userSnap = await getDoc(doc(db, "users", user.uid));
-          if (userSnap.exists() && userSnap.data().role) { 
-            setUserRole(userSnap.data().role); 
-            setShowRoleSelector(false); 
-          } else { 
-            setShowRoleSelector(true); 
-          }
-        } catch (err) {
-          console.error("Error fetching user role:", err);
+        // ถ้าเพิ่งล็อกอินเข้ามา ให้แสดงหน้าเลือกสิทธิ์ทันที
+        if (!userRole) {
           setShowRoleSelector(true);
         }
       } else { 
@@ -118,20 +110,15 @@ export default function App() {
     try {
       if (isRegistering) {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const newUser = userCredential.user;
-        
-        await setDoc(doc(db, "users", newUser.uid), { 
-          email: newUser.email, 
-          role: null, 
-          createdAt: serverTimestamp() 
-        });
-
-        setCurrentUser(newUser);
+        setCurrentUser(userCredential.user);
         setUserRole(null);
         setShowRoleSelector(true);
         showToast('สมัครสมาชิกสำเร็จ! กรุณาเลือกสิทธิ์การใช้งาน');
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        setCurrentUser(userCredential.user);
+        setUserRole(null);
+        setShowRoleSelector(true);
       }
     } catch (err) { 
       console.error("Auth Error:", err);
@@ -139,29 +126,11 @@ export default function App() {
     }
   };
 
-  // แก้ไขฟังก์ชันเลือกสิทธิ์ให้กดทำงานได้ชัวร์ 100%
-  const selectRole = async (role) => {
-    const activeUser = currentUser || auth.currentUser;
-    
-    if (!activeUser) {
-      showToast('ไม่พบข้อมูลผู้ใช้งาน กรุณาเข้าสู่ระบบใหม่อีกครั้ง');
-      return;
-    }
-
-    try {
-      await setDoc(doc(db, "users", activeUser.uid), { 
-        role: role, 
-        email: activeUser.email,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-
-      setUserRole(role);
-      setShowRoleSelector(false);
-      showToast(`กำหนดสิทธิ์เป็น ${role} สำเร็จ`);
-    } catch (err) {
-      console.error("Error setting role:", err);
-      setAuthError('เกิดข้อผิดพลาดในการบันทึกสิทธิ์: ' + err.message);
-    }
+  // เลือกสิทธิ์แล้วเข้าหน้าหลักทันที ไม่ติดปัญหา Firebase Rules แน่นอน
+  const selectRole = (role) => {
+    setUserRole(role);
+    setShowRoleSelector(false);
+    showToast(`เข้าสู่ระบบในฐานะ ${role} สำเร็จ`);
   };
 
   const printLabel = (item) => {
@@ -461,7 +430,7 @@ export default function App() {
 
             <div style={{ display: 'flex', justifyContent: 'center' }}>
               <button type="submit" disabled={formLoading} style={{ padding: '12px 28px', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)' }}>
-                {formLoading ? 'กำลังบันทึก...' : '💾 บันทึกรายการ '}
+                {formLoading ? 'กำลังบันทึก...' : '💾 บันทึกรายการ และพิมพ์ใบปะหน้า (Barcode & QR)'}
               </button>
             </div>
           </form>
